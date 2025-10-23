@@ -396,7 +396,7 @@ elif page == "🏟️ Field Pivot":
             for field in all_fields:
                 # Count games at this time/field combination
                 game_count = len(date_df[(date_df['Time'] == time) & (date_df['Field'] == field)])
-                row_data[field] = game_count if game_count > 0 else ''
+                row_data[field] = game_count if game_count > 0 else 0
             
             pivot_data.append(row_data)
         
@@ -404,7 +404,9 @@ elif page == "🏟️ Field Pivot":
         pivot_df = pd.DataFrame(pivot_data)
         
         # Add Grand Total column (sum of games per time slot)
-        pivot_df['Grand Total'] = pivot_df.drop('Time', axis=1).sum(axis=1)
+        # Sum all columns except 'Time'
+        numeric_cols = [col for col in pivot_df.columns if col != 'Time']
+        pivot_df['Grand Total'] = pivot_df[numeric_cols].sum(axis=1)
         
         # Add Grand Total row (sum of games per field)
         totals_row = {'Time': 'Grand Total'}
@@ -415,6 +417,10 @@ elif page == "🏟️ Field Pivot":
         # Append totals row
         pivot_df = pd.concat([pivot_df, pd.DataFrame([totals_row])], ignore_index=True)
         
+        # Replace 0 with empty string for display (except Grand Total column and row)
+        for col in all_fields:
+            pivot_df.loc[pivot_df.index[:-1], col] = pivot_df.loc[pivot_df.index[:-1], col].replace(0, '')
+        
         # Display the pivot table
         st.dataframe(
             pivot_df,
@@ -422,7 +428,7 @@ elif page == "🏟️ Field Pivot":
             hide_index=True,
             column_config={
                 'Time': st.column_config.TextColumn('Time', width='medium'),
-                **{field: st.column_config.NumberColumn(field, width='small') for field in all_fields},
+                **{field: st.column_config.TextColumn(field, width='small') for field in all_fields},
                 'Grand Total': st.column_config.NumberColumn('Grand Total', width='small')
             }
         )
