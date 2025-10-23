@@ -1182,14 +1182,14 @@ elif page == "✏️ Edit Game*":
                     # Clear cache to reload data
                     st.cache_data.clear()
                     
-                    # Set a flag to indicate we just saved
+                    # Store success message in session state
+                    if audit_entries:
+                        st.session_state.edit_success_message = f"✅ Game #{game_num} updated successfully! Tracked {len(audit_entries)} change(s)."
+                    else:
+                        st.session_state.edit_success_message = "ℹ️ No changes were made to the game."
+                    
                     st.session_state.just_saved = True
                     st.session_state.saved_game_number = game_num
-                    
-                    if audit_entries:
-                        st.success(f"✅ Game #{game_num} updated successfully! Tracked {len(audit_entries)} change(s).")
-                    else:
-                        st.info("ℹ️ No changes were made to the game.")
                     
                     # Reload the page to show updated data
                     st.rerun()
@@ -1198,6 +1198,15 @@ elif page == "✏️ Edit Game*":
                     conn.close()
                     st.error(f"❌ Error updating game: {str(e)}")
                     st.error(f"Debug info: Game # = {game_num}")
+        
+        # Show success message if it exists from previous save
+        if 'edit_success_message' in st.session_state:
+            if st.session_state.edit_success_message.startswith("✅"):
+                st.success(st.session_state.edit_success_message)
+            else:
+                st.info(st.session_state.edit_success_message)
+            # Clear the message so it doesn't show again
+            del st.session_state.edit_success_message
         
         # Show audit trail after the form (outside the form block)
         st.markdown("---")
