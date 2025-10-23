@@ -961,13 +961,16 @@ elif page == "✏️ Edit Game*":
                 submitted = st.form_submit_button("💾 Save Changes", type="primary")
             
             if submitted:
+                # Convert Game # to Python int for database compatibility
+                game_num = int(selected_game['Game #'])
+                
                 # Track all changes for audit trail
                 audit_entries = []
                 
                 # Check each field for changes
                 if new_game_date != selected_game['Game Date']:
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Game Date", 
                         selected_game['Game Date'], 
                         new_game_date
@@ -975,7 +978,7 @@ elif page == "✏️ Edit Game*":
                 
                 if new_field != selected_game['Field']:
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Field", 
                         selected_game['Field'], 
                         new_field
@@ -983,7 +986,7 @@ elif page == "✏️ Edit Game*":
                 
                 if new_time != selected_game['Time']:
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Time", 
                         selected_game['Time'], 
                         new_time
@@ -991,7 +994,7 @@ elif page == "✏️ Edit Game*":
                 
                 if new_home != selected_game['Home']:
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Home Team", 
                         selected_game['Home'], 
                         new_home
@@ -999,7 +1002,7 @@ elif page == "✏️ Edit Game*":
                 
                 if new_away != selected_game['Away']:
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Away Team", 
                         selected_game['Away'], 
                         new_away
@@ -1007,7 +1010,7 @@ elif page == "✏️ Edit Game*":
                 
                 if new_status != selected_game['Status']:
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Status", 
                         selected_game['Status'], 
                         new_status
@@ -1015,7 +1018,7 @@ elif page == "✏️ Edit Game*":
                 
                 if new_comment != str(selected_game.get('Comment', '')):
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Comment", 
                         selected_game.get('Comment', ''), 
                         new_comment
@@ -1023,7 +1026,7 @@ elif page == "✏️ Edit Game*":
                 
                 if new_original_date != str(selected_game.get('Original Date', '')):
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Original Date", 
                         selected_game.get('Original Date', ''), 
                         new_original_date
@@ -1035,7 +1038,7 @@ elif page == "✏️ Edit Game*":
                 # Track if Week or Daycode changed (due to date change)
                 if new_week != selected_game['Week']:
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Week (auto-calculated)", 
                         selected_game['Week'], 
                         new_week
@@ -1043,7 +1046,7 @@ elif page == "✏️ Edit Game*":
                 
                 if new_daycode != selected_game['Daycode']:
                     audit_entries.append(add_audit_entry(
-                        selected_game['Game #'], 
+                        game_num, 
                         "Daycode (auto-calculated)", 
                         selected_game['Daycode'], 
                         new_daycode
@@ -1053,7 +1056,7 @@ elif page == "✏️ Edit Game*":
                 conn = sqlite3.connect('wusa_schedule.db')
                 cursor = conn.cursor()
                 
-                cursor.execute("SELECT game_audit_trail FROM games WHERE \"Game #\" = ?", (selected_game['Game #'],))
+                cursor.execute("SELECT game_audit_trail FROM games WHERE \"Game #\" = ?", (game_num,))
                 result = cursor.fetchone()
                 existing_audit = result[0] if result and result[0] else ""
                 
@@ -1067,32 +1070,15 @@ elif page == "✏️ Edit Game*":
                     new_audit_trail = existing_audit
                 
                 try:
+                    # Convert Game # to Python int (numpy.int64 doesn't work with SQLite)
+                    game_num = int(selected_game['Game #'])
+                    
                     # Debug: Show what we're about to save
                     st.write("**DEBUG - Values to save:**")
-                    st.write(f"Game #: {selected_game['Game #']} (type: {type(selected_game['Game #'])})")
+                    st.write(f"Game #: {game_num} (converted from {type(selected_game['Game #'])} to {type(game_num)})")
                     st.write(f"Old Date: {selected_game['Game Date']}, New Date: {new_game_date}")
                     st.write(f"Old Field: {selected_game['Field']}, New Field: {new_field}")
                     st.write(f"Old Time: {selected_game['Time']}, New Time: {new_time}")
-                    
-                    # Check if game exists in database
-                    cursor.execute("SELECT \"Game #\", \"Game Date\", Field FROM games WHERE \"Game #\" = ?", (selected_game['Game #'],))
-                    exists_check = cursor.fetchone()
-                    st.write(f"**DEBUG - Game exists check: {exists_check}**")
-                    
-                    # Try with string conversion
-                    game_num_str = str(selected_game['Game #'])
-                    cursor.execute("SELECT \"Game #\", \"Game Date\", Field FROM games WHERE \"Game #\" = ?", (game_num_str,))
-                    exists_check_str = cursor.fetchone()
-                    st.write(f"**DEBUG - Game exists check (as string): {exists_check_str}**")
-                    
-                    # Try with int conversion
-                    try:
-                        game_num_int = int(selected_game['Game #'])
-                        cursor.execute("SELECT \"Game #\", \"Game Date\", Field FROM games WHERE \"Game #\" = ?", (game_num_int,))
-                        exists_check_int = cursor.fetchone()
-                        st.write(f"**DEBUG - Game exists check (as int): {exists_check_int}**")
-                    except:
-                        st.write("**DEBUG - Could not convert to int**")
                     
                     # Update the database - including recalculated Week and Daycode and audit trail
                     update_query = """
@@ -1111,7 +1097,7 @@ elif page == "✏️ Edit Game*":
                         WHERE "Game #" = ?
                     """
                     
-                    st.write(f"**DEBUG - Executing UPDATE for Game # {selected_game['Game #']}**")
+                    st.write(f"**DEBUG - Executing UPDATE for Game # {game_num}**")
                     
                     cursor.execute(update_query, (
                         new_game_date,
@@ -1125,7 +1111,7 @@ elif page == "✏️ Edit Game*":
                         new_comment,
                         new_original_date,
                         new_audit_trail,
-                        selected_game['Game #']  # Use original Game # as identifier
+                        game_num  # Use converted int
                     ))
                     
                     rows_affected = cursor.rowcount
@@ -1135,7 +1121,7 @@ elif page == "✏️ Edit Game*":
                     st.write("**DEBUG - Commit successful**")
                     
                     # Verify the update worked
-                    cursor.execute("SELECT \"Game Date\", Field, Time FROM games WHERE \"Game #\" = ?", (selected_game['Game #'],))
+                    cursor.execute("SELECT \"Game Date\", Field, Time FROM games WHERE \"Game #\" = ?", (game_num,))
                     verify = cursor.fetchone()
                     st.write(f"**DEBUG - After commit, database shows: {verify}**")
                     
@@ -1146,10 +1132,10 @@ elif page == "✏️ Edit Game*":
                     
                     # Set a flag to indicate we just saved
                     st.session_state.just_saved = True
-                    st.session_state.saved_game_number = selected_game['Game #']
+                    st.session_state.saved_game_number = game_num
                     
                     if audit_entries:
-                        st.success(f"✅ Game #{selected_game['Game #']} updated successfully! Tracked {len(audit_entries)} change(s).")
+                        st.success(f"✅ Game #{game_num} updated successfully! Tracked {len(audit_entries)} change(s).")
                         # Show verification
                         if verify:
                             st.info(f"🔍 Verified: Date={verify[0]}, Field={verify[1]}, Time={verify[2]}")
@@ -1162,7 +1148,7 @@ elif page == "✏️ Edit Game*":
                 except Exception as e:
                     conn.close()
                     st.error(f"❌ Error updating game: {str(e)}")
-                    st.error(f"Debug info: Game # = {selected_game['Game #']}")
+                    st.error(f"Debug info: Game # = {game_num}")
         
         # Show audit trail after the form (outside the form block)
         st.markdown("---")
@@ -1172,7 +1158,8 @@ elif page == "✏️ Edit Game*":
         conn = sqlite3.connect('wusa_schedule.db')
         # Use a direct query without caching
         cursor = conn.cursor()
-        cursor.execute("SELECT game_audit_trail FROM games WHERE \"Game #\" = ?", (selected_game['Game #'],))
+        game_num = int(selected_game['Game #'])
+        cursor.execute("SELECT game_audit_trail FROM games WHERE \"Game #\" = ?", (game_num,))
         result = cursor.fetchone()
         conn.close()
         
