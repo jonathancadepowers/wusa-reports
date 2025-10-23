@@ -35,10 +35,9 @@ df = load_games()
 
 # Sidebar
 # Add logo at the top
-st.sidebar.image("wusa_logo.png", width=int(300 * 0.35))  # 35% of a reasonable base width
+st.sidebar.image("wusa_logo.png", width=int(300 * 0.50))  # 50% of a reasonable base width
 
-st.sidebar.title("⚾ WUSA Schedule")
-st.sidebar.markdown("**Fall 2025**")
+st.sidebar.title("Fall 2025 Schedule")
 
 # Single radio group with all pages
 page = st.sidebar.radio(
