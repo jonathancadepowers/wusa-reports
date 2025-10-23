@@ -1024,8 +1024,9 @@ elif page == "📅 Teams by Day":
     
     html += "</tbody></table>"
     
-    # Display the styled table
-    st.markdown(html, unsafe_allow_html=True)
+    # Display the styled table using components for better rendering
+    import streamlit.components.v1 as components
+    components.html(html, height=600, scrolling=True)
     
     # Download button
     csv = matrix_df.to_csv(index=False)
