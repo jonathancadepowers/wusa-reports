@@ -882,6 +882,17 @@ elif page == "📊 Division Summary":
     # Convert to DataFrame
     summary_df = pd.DataFrame(summary_rows)
     
+    # Calculate date ranges for each week for tooltips
+    week_date_ranges = {}
+    for week in sorted(df['Week'].unique()):
+        week_games = div_df[div_df['Week'] == week]
+        if len(week_games) > 0:
+            # Parse dates and get min/max
+            dates = pd.to_datetime(week_games['Game Date'])
+            min_date = dates.min().strftime('%-m/%-d')
+            max_date = dates.max().strftime('%-m/%-d')
+            week_date_ranges[week] = f"{min_date}-{max_date}"
+    
     # Create styled HTML table
     html = """
     <style>
@@ -921,15 +932,60 @@ elif page == "📊 Division Summary":
             background-color: #ffc107 !important;
             font-weight: 700;
         }
+        .tooltip-header {
+            position: relative;
+            cursor: help;
+        }
+        .tooltip-header .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            font-size: 13px;
+        }
+        .tooltip-header .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        .tooltip-header:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
     <table class="summary-table">
         <thead>
             <tr>
     """
     
-    # Add headers
+    # Add headers with tooltips for Week columns
     for col in summary_df.columns:
-        html += f"<th>{col}</th>"
+        if col.startswith('Week '):
+            # Extract week number
+            week_num = int(col.split(' ')[1])
+            if week_num in week_date_ranges:
+                date_range = week_date_ranges[week_num]
+                html += f'''<th class="tooltip-header">{col}<span class="tooltiptext">{date_range}</span></th>'''
+            else:
+                html += f"<th>{col}</th>"
+        else:
+            html += f"<th>{col}</th>"
     html += "</tr></thead><tbody>"
     
     # Add data rows
