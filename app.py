@@ -205,7 +205,7 @@ page = st.sidebar.radio(
         "📊 Division Summary",
         "📅 Teams by Day",
         "📆 Monthly Calendar",
-        "🔍 Data Query Tool",
+        "🔍 Data Query Tool*",
         "✏️ Edit Game*",
         "📝 Recent Changes*"
     ]
@@ -1708,26 +1708,23 @@ elif page == "📆 Monthly Calendar":
     else:
         st.warning("No games found in the schedule.")
 
-elif page == "🔍 Data Query Tool":
+elif page == "🔍 Data Query Tool*":
     st.title("🔍 Data Query Tool")
     
     st.markdown("""
     **Run SQL queries against the schedule database.** This tool is read-only for safety.
-    
-    Available tables:
-    - `games` - All game information
-    - `schedule_requests` - Schedule change requests
     """)
     
     # SQL query input
     query = st.text_area(
-        "Enter your SQL query (SELECT only):",
+        "",
         height=150,
         placeholder="SELECT * FROM games LIMIT 10;",
-        help="Only SELECT queries are allowed. INSERT, UPDATE, DELETE, DROP, etc. are blocked."
+        help="Only SELECT queries are allowed. INSERT, UPDATE, DELETE, DROP, etc. are blocked.",
+        label_visibility="collapsed"
     )
     
-    col1, col2 = st.columns([1, 5])
+    col1, col2, col3 = st.columns([1, 1, 6])
     with col1:
         run_button = st.button("▶️ Run Query", type="primary")
     with col2:
@@ -1745,9 +1742,6 @@ elif page == "🔍 Data Query Tool":
         
         -- Show structure of the 'games' table
         PRAGMA table_info(games);
-        
-        -- Show structure of the 'schedule_requests' table
-        PRAGMA table_info(schedule_requests);
         
         -- Get all games for a specific team
         SELECT * FROM games WHERE Home = 'Aliens' OR Away = 'Aliens';
