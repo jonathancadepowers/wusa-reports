@@ -369,175 +369,80 @@ if page == "📅 Full Schedule":
     )
 
 elif page == "🏟️ Field Pivot":
-    st.title("🏟️ Field Pivot Report")
+    st.title("🏟️ Fields with # of Game")
     
-    # Filters in columns
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        selected_week = st.selectbox("Week", sorted(df['Week'].unique()))
-    with col2:
-        # Get min and max dates from the schedule
-        min_date = df['Game Date Parsed'].min().date()
-        max_date = df['Game Date Parsed'].max().date()
+    # Get unique dates from the schedule
+    unique_dates = sorted(df['Game Date'].unique())
+    
+    # Date selector
+    selected_date = st.selectbox("Select Date", unique_dates)
+    
+    # Filter games for selected date
+    date_df = df[df['Game Date'] == selected_date].copy()
+    
+    if len(date_df) == 0:
+        st.info("No games scheduled for this date.")
+    else:
+        # Get all unique fields and time slots
+        all_fields = sorted(date_df['Field'].unique())
+        all_times = sorted(date_df['Time'].unique())
         
-        start_date = st.date_input(
-            "Start Date",
-            value=min_date,
-            min_value=min_date,
-            max_value=max_date,
-            key="field_pivot_start_date"
-        )
-    with col3:
-        end_date = st.date_input(
-            "End Date",
-            value=max_date,
-            min_value=min_date,
-            max_value=max_date,
-            key="field_pivot_end_date"
-        )
-    
-    # Filter by week and date range
-    week_df = df[
-        (df['Week'] == selected_week) &
-        (df['Game Date Parsed'].dt.date >= start_date) &
-        (df['Game Date Parsed'].dt.date <= end_date)
-    ]
-    
-    # Create a dictionary to store game details for tooltips
-    game_details = {}
-    for _, row in week_df.iterrows():
-        key = (row['Time'], row['Field'])
-        if key not in game_details:
-            game_details[key] = []
-        game_info = f"{row['Home']} vs {row['Away']}"
-        game_details[key].append(game_info)
-    
-    # Create pivot table
-    pivot = week_df.pivot_table(
-        index='Time',
-        columns='Field',
-        values='Division',
-        aggfunc='first',
-        fill_value=''
-    )
-    
-    # Generate HTML table with hover tooltips
-    html = """
-    <style>
-        .pivot-table {
-            border-collapse: collapse;
-            width: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 14px;
-        }
-        .pivot-table th, .pivot-table td {
-            border: 1px solid #ddd;
-            padding: 12px 16px;
-            text-align: center;
-        }
-        .pivot-table th {
-            background-color: #f0f2f6;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .pivot-table tr:hover {
-            background-color: #f8f9fa;
-        }
-        .tooltip-cell {
-            position: relative;
-            cursor: help;
-            color: #0066cc;
-            font-weight: 500;
-        }
-        .tooltip-cell:hover {
-            background-color: #e8f4f8;
-        }
-        .tooltip-cell .tooltiptext {
-            visibility: hidden;
-            width: 300px;
-            background-color: #333;
-            color: #fff;
-            text-align: left;
-            border-radius: 6px;
-            padding: 12px;
-            position: absolute;
-            z-index: 1000;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -150px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            font-size: 13px;
-            line-height: 1.6;
-        }
-        .tooltip-cell .tooltiptext::after {
-            content: "";
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            margin-left: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: #333 transparent transparent transparent;
-        }
-        .tooltip-cell:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-        .game-item {
-            padding: 4px 0;
-            border-bottom: 1px solid #555;
-        }
-        .game-item:last-child {
-            border-bottom: none;
-        }
-    </style>
-    <table class="pivot-table">
-        <thead>
-            <tr>
-                <th>Time</th>
-    """
-    
-    # Add column headers (fields)
-    for field in pivot.columns:
-        html += f"<th>{field}</th>"
-    html += "</tr></thead><tbody>"
-    
-    # Add data rows
-    for time in pivot.index:
-        html += f"<tr><th>{time}</th>"
-        for field in pivot.columns:
-            value = pivot.loc[time, field]
-            key = (time, field)
+        # Create pivot table: Time (rows) x Field (columns), counting games
+        pivot_data = []
+        
+        for time in all_times:
+            row_data = {'Time': time}
             
-            if value and key in game_details:
-                # Create tooltip with game details
-                tooltip_content = "<br>".join([f'<div class="game-item">{game}</div>' for game in game_details[key]])
-                html += f'''<td class="tooltip-cell">
-                    {value}
-                    <span class="tooltiptext">{tooltip_content}</span>
-                </td>'''
-            elif value:
-                html += f"<td>{value}</td>"
-            else:
-                html += "<td></td>"
-        html += "</tr>"
-    
-    html += "</tbody></table>"
-    
-    st.markdown(html, unsafe_allow_html=True)
-    
-    # Download button
-    csv = pivot.to_csv()
-    st.download_button(
-        "📥 Download as CSV",
-        csv,
-        f"field_pivot_week_{selected_week}.csv",
-        "text/csv"
-    )
+            for field in all_fields:
+                # Count games at this time/field combination
+                game_count = len(date_df[(date_df['Time'] == time) & (date_df['Field'] == field)])
+                row_data[field] = game_count if game_count > 0 else ''
+            
+            pivot_data.append(row_data)
+        
+        # Convert to DataFrame
+        pivot_df = pd.DataFrame(pivot_data)
+        
+        # Add Grand Total column (sum of games per time slot)
+        pivot_df['Grand Total'] = pivot_df.drop('Time', axis=1).sum(axis=1)
+        
+        # Add Grand Total row (sum of games per field)
+        totals_row = {'Time': 'Grand Total'}
+        for field in all_fields:
+            totals_row[field] = len(date_df[date_df['Field'] == field])
+        totals_row['Grand Total'] = len(date_df)
+        
+        # Append totals row
+        pivot_df = pd.concat([pivot_df, pd.DataFrame([totals_row])], ignore_index=True)
+        
+        # Display the pivot table
+        st.dataframe(
+            pivot_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                'Time': st.column_config.TextColumn('Time', width='medium'),
+                **{field: st.column_config.NumberColumn(field, width='small') for field in all_fields},
+                'Grand Total': st.column_config.NumberColumn('Grand Total', width='small')
+            }
+        )
+        
+        # Show game details in expandable section
+        with st.expander("📋 View Game Details for This Date"):
+            st.dataframe(
+                date_df[['Time', 'Field', 'Division', 'Home', 'Away']].sort_values(['Time', 'Field']),
+                use_container_width=True,
+                hide_index=True
+            )
+        
+        # Download button
+        csv = pivot_df.to_csv(index=False)
+        st.download_button(
+            "📥 Download as CSV",
+            csv,
+            f"field_pivot_{selected_date.replace(', ', '_').replace(' ', '_')}.csv",
+            "text/csv"
+        )
 
 elif page == "👥 Team Schedules":
     st.title("👥 Team Schedules")
