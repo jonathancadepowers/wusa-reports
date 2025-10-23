@@ -199,7 +199,7 @@ page = st.sidebar.radio(
     "",
     [
         "📅 Full Schedule", 
-        "🏟️ Field Pivot", 
+        "🏟️ Games by Field", 
         "👥 Team Schedules",
         "📋 Team vs Date Matrix",
         "📊 Division Summary",
@@ -368,14 +368,14 @@ if page == "📅 Full Schedule":
         "text/csv"
     )
 
-elif page == "🏟️ Field Pivot":
-    st.title("🏟️ Fields with # of Game")
+elif page == "🏟️ Games by Field":
+    st.title("🏟️ Games by Field")
     
     # Get unique dates from the schedule
     unique_dates = sorted(df['Game Date'].unique())
     
     # Date selector
-    selected_date = st.selectbox("Select Date", unique_dates)
+    selected_date = st.selectbox("Date", unique_dates)
     
     # Filter games for selected date
     date_df = df[df['Game Date'] == selected_date].copy()
