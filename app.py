@@ -183,6 +183,15 @@ elif page == "🏟️ Field Pivot":
     # Filter by week
     week_df = df[df['Week'] == selected_week]
     
+    # Create a dictionary to store game details for tooltips
+    game_details = {}
+    for _, row in week_df.iterrows():
+        key = (row['Time'], row['Field'])
+        if key not in game_details:
+            game_details[key] = []
+        game_info = f"Game #{row['Game #']}: {row['Home']} vs {row['Away']}"
+        game_details[key].append(game_info)
+    
     # Create pivot table
     pivot = week_df.pivot_table(
         index='Time',
@@ -192,41 +201,115 @@ elif page == "🏟️ Field Pivot":
         fill_value=''
     )
     
-    st.dataframe(
-        pivot,
-        use_container_width=True
-    )
+    # Generate HTML table with hover tooltips
+    html = """
+    <style>
+        .pivot-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 14px;
+        }
+        .pivot-table th, .pivot-table td {
+            border: 1px solid #ddd;
+            padding: 12px 16px;
+            text-align: center;
+        }
+        .pivot-table th {
+            background-color: #f0f2f6;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .pivot-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .tooltip-cell {
+            position: relative;
+            cursor: help;
+            color: #0066cc;
+            font-weight: 500;
+        }
+        .tooltip-cell:hover {
+            background-color: #e8f4f8;
+        }
+        .tooltip-cell .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 12px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .tooltip-cell .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        .tooltip-cell:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        .game-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #555;
+        }
+        .game-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+    <table class="pivot-table">
+        <thead>
+            <tr>
+                <th>Time</th>
+    """
     
-    st.markdown("---")
-    st.markdown("### 🔍 Game Details by Time Slot")
-    st.markdown("Select a time slot to see all games scheduled:")
+    # Add column headers (fields)
+    for field in pivot.columns:
+        html += f"<th>{field}</th>"
+    html += "</tr></thead><tbody>"
     
-    # Time slot selector
-    all_times = sorted(week_df['Time'].unique())
-    selected_time = st.selectbox("Select Time Slot", all_times)
-    
-    # Filter games by selected time
-    time_games = week_df[week_df['Time'] == selected_time]
-    
-    if len(time_games) > 0:
-        st.markdown(f"**{len(time_games)} game(s) at {selected_time}:**")
-        
-        # Group by field for better display
-        for field in sorted(time_games['Field'].unique()):
-            field_games = time_games[time_games['Field'] == field]
+    # Add data rows
+    for time in pivot.index:
+        html += f"<tr><th>{time}</th>"
+        for field in pivot.columns:
+            value = pivot.loc[time, field]
+            key = (time, field)
             
-            with st.expander(f"**{field}** - {len(field_games)} game(s)", expanded=True):
-                for _, game in field_games.iterrows():
-                    st.markdown(f"""
-                    **Game #{game['Game #']}** - {game['Division']}  
-                    🏠 {game['Home']} vs 🏃 {game['Away']}  
-                    📅 {game['Game Date']} | ⏰ {game['Time']} | 🏟️ {game['Field']}
-                    """)
-                    if game.get('Comment') and str(game.get('Comment')) != 'None' and str(game.get('Comment')).strip():
-                        st.info(f"💬 Comment: {game['Comment']}")
-                    st.markdown("---")
-    else:
-        st.info("No games scheduled for this time slot")
+            if value and key in game_details:
+                # Create tooltip with game details
+                tooltip_content = "<br>".join([f'<div class="game-item">{game}</div>' for game in game_details[key]])
+                html += f'''<td class="tooltip-cell">
+                    {value}
+                    <span class="tooltiptext">{tooltip_content}</span>
+                </td>'''
+            elif value:
+                html += f"<td>{value}</td>"
+            else:
+                html += "<td></td>"
+        html += "</tr>"
+    
+    html += "</tbody></table>"
+    
+    st.markdown("💡 **Tip:** Hover over any division to see game details!", unsafe_allow_html=True)
+    st.markdown(html, unsafe_allow_html=True)
     
     # Download button
     csv = pivot.to_csv()
