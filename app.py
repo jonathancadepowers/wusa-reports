@@ -176,7 +176,7 @@ elif page == "🏟️ Field Pivot":
     # Filters in columns
     col1, col2, col3 = st.columns(3)
     with col1:
-        selected_week = st.selectbox("Week", sorted(df['Week'].unique()))
+        selected_week = st.selectbox("Select Week", sorted(df['Week'].unique()))
     with col2:
         # Get min and max dates from the schedule
         min_date = df['Game Date Parsed'].min().date()
@@ -344,13 +344,46 @@ elif page == "🏟️ Field Pivot":
 elif page == "👥 Team Schedules":
     st.title("👥 Team Schedules")
     
-    # Get all unique teams (both home and away), filtering out NaN values
-    home_teams = df['Home'].dropna().unique()
-    away_teams = df['Away'].dropna().unique()
-    all_teams = sorted(set(list(home_teams) + list(away_teams)))
+    # Create a dictionary mapping teams to their divisions
+    team_division_map = {}
+    for _, row in df.iterrows():
+        home_team = row['Home']
+        away_team = row['Away']
+        division = row['Division']
+        
+        if pd.notna(home_team) and home_team not in team_division_map:
+            team_division_map[home_team] = division
+        if pd.notna(away_team) and away_team not in team_division_map:
+            team_division_map[away_team] = division
+    
+    # Create team options with division prefix and sort
+    team_options = []
+    for team, division in team_division_map.items():
+        team_options.append({
+            'display': f"{division} - {team}",
+            'team': team,
+            'division': division
+        })
+    
+    # Sort by division (convert to number for proper sorting), then by team name
+    def sort_key(item):
+        # Extract numeric part from division (e.g., "10U" -> 10)
+        div = item['division']
+        try:
+            num = int(''.join(filter(str.isdigit, div)))
+        except:
+            num = 999  # Put non-numeric divisions at the end
+        return (num, item['team'])
+    
+    team_options.sort(key=sort_key)
+    
+    # Create display list and lookup
+    team_display_list = [opt['display'] for opt in team_options]
+    team_lookup = {opt['display']: opt['team'] for opt in team_options}
     
     # Team selector
-    selected_team = st.selectbox("Select Team", all_teams)
+    selected_display = st.selectbox("Team", team_display_list)
+    selected_team = team_lookup[selected_display]
     
     # Filter games for this team
     team_games = df[
