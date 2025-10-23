@@ -1073,13 +1073,6 @@ elif page == "✏️ Edit Game*":
                     # Convert Game # to Python int (numpy.int64 doesn't work with SQLite)
                     game_num = int(selected_game['Game #'])
                     
-                    # Debug: Show what we're about to save
-                    st.write("**DEBUG - Values to save:**")
-                    st.write(f"Game #: {game_num} (converted from {type(selected_game['Game #'])} to {type(game_num)})")
-                    st.write(f"Old Date: {selected_game['Game Date']}, New Date: {new_game_date}")
-                    st.write(f"Old Field: {selected_game['Field']}, New Field: {new_field}")
-                    st.write(f"Old Time: {selected_game['Time']}, New Time: {new_time}")
-                    
                     # Update the database - including recalculated Week and Daycode and audit trail
                     update_query = """
                         UPDATE games SET
@@ -1097,8 +1090,6 @@ elif page == "✏️ Edit Game*":
                         WHERE "Game #" = ?
                     """
                     
-                    st.write(f"**DEBUG - Executing UPDATE for Game # {game_num}**")
-                    
                     cursor.execute(update_query, (
                         new_game_date,
                         new_field,
@@ -1114,17 +1105,7 @@ elif page == "✏️ Edit Game*":
                         game_num  # Use converted int
                     ))
                     
-                    rows_affected = cursor.rowcount
-                    st.write(f"**DEBUG - Rows affected: {rows_affected}**")
-                    
                     conn.commit()
-                    st.write("**DEBUG - Commit successful**")
-                    
-                    # Verify the update worked
-                    cursor.execute("SELECT \"Game Date\", Field, Time FROM games WHERE \"Game #\" = ?", (game_num,))
-                    verify = cursor.fetchone()
-                    st.write(f"**DEBUG - After commit, database shows: {verify}**")
-                    
                     conn.close()
                     
                     # Clear cache to reload data
@@ -1136,14 +1117,11 @@ elif page == "✏️ Edit Game*":
                     
                     if audit_entries:
                         st.success(f"✅ Game #{game_num} updated successfully! Tracked {len(audit_entries)} change(s).")
-                        # Show verification
-                        if verify:
-                            st.info(f"🔍 Verified: Date={verify[0]}, Field={verify[1]}, Time={verify[2]}")
                     else:
                         st.info("ℹ️ No changes were made to the game.")
                     
-                    # TEMPORARILY DISABLED: Reload the page to show updated data
-                    # st.rerun()
+                    # Reload the page to show updated data
+                    st.rerun()
                         
                 except Exception as e:
                     conn.close()
@@ -1572,53 +1550,78 @@ elif page == "✉️ Request Change":
     
     st.markdown("""
     Use this form to request changes to the schedule. Your request will be 
-    logged and reviewed by the scheduling team.
+    logged and reviewed by the WUSA Scheduling Team.
     """)
     
     with st.form("schedule_request_form"):
         # Email address (required)
         email = st.text_input(
-            "Your Email Address *",
-            placeholder="your.email@example.com",
-            help="We'll use this to follow up on your request"
+            "Your Email Address",
+            placeholder="your.email@example.com"
         )
         
-        # Game selection
+        # Game selection with Team dropdown (same as Edit Game page)
         col1, col2 = st.columns(2)
         with col1:
-            selected_division = st.selectbox("Division", sort_divisions(df['Division'].unique()))
+            # Get all unique teams from both Home and Away columns
+            all_teams = set(df['Home'].dropna().tolist() + df['Away'].dropna().tolist())
+            
+            # Create team options with "Division - Team Name" format
+            team_division_map = {}
+            for team in all_teams:
+                # Find the division for this team (check both Home and Away)
+                team_games = df[(df['Home'] == team) | (df['Away'] == team)]
+                if len(team_games) > 0:
+                    division = team_games.iloc[0]['Division']
+                    team_division_map[team] = division
+            
+            # Create formatted team list: "Division - Team Name"
+            team_list = [f"{team_division_map[team]} - {team}" for team in all_teams if team in team_division_map]
+            
+            # Sort by division (numerically) then by team name
+            def sort_key(team_str):
+                division, team_name = team_str.split(" - ", 1)
+                # Extract numeric part from division (e.g., "10U" -> 10)
+                try:
+                    div_num = int(''.join(filter(str.isdigit, division)))
+                except:
+                    div_num = 999
+                return (div_num, team_name)
+            
+            team_options = sorted(team_list, key=sort_key)
+            selected_team_display = st.selectbox("Team", team_options)
+            
+            # Extract team name and division from selection
+            selected_division = selected_team_display.split(" - ")[0]
+            selected_team = selected_team_display.split(" - ", 1)[1]
+            
         with col2:
-            # Filter games by selected division
-            division_games = df[df['Division'] == selected_division]
+            # Filter games by selected team
+            team_games = df[(df['Home'] == selected_team) | (df['Away'] == selected_team)]
             game_options = [
                 f"{row['Game Date']} - {row['Time']} - {row['Home']} vs {row['Away']}"
-                for _, row in division_games.iterrows()
+                for _, row in team_games.iterrows()
             ]
-            selected_game = st.selectbox("Game", game_options)
-        
-        # Request type
-        request_type = st.selectbox(
-            "Type of Request",
-            ["Reschedule Game", "Change Field", "Change Time", "Other"]
-        )
+            selected_game = st.selectbox("Game", game_options if len(game_options) > 0 else ["No games found"])
         
         # Reason (required)
         reason = st.text_area(
-            "Reason for Request *",
-            placeholder="Please explain why you need this change...",
-            height=150,
-            help="Be as specific as possible to help us process your request"
+            "Reason for Request",
+            placeholder="Explain the reason for your change. Once submitted, the WUSA Scheduling Team will review it. You'll be emailed with an update when one is available.",
+            height=150
         )
         
         # Submit button
         submitted = st.form_submit_button("Submit Request", type="primary")
         
         if submitted:
-            # Validation
+            # Validation - all fields required
             if not email or not email.strip():
                 st.error("❌ Email address is required")
             elif "@" not in email:
                 st.error("❌ Please enter a valid email address")
+            elif not selected_game or selected_game == "No games found":
+                st.error("❌ Please select a valid game")
             elif not reason or not reason.strip():
                 st.error("❌ Please provide a reason for your request")
             else:
@@ -1626,14 +1629,14 @@ elif page == "✉️ Request Change":
                 conn = sqlite3.connect('wusa_schedule.db')
                 cursor = conn.cursor()
                 
-                # Create requests table if it doesn't exist
+                # Create requests table if it doesn't exist (without request_type column)
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS schedule_requests (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         email TEXT NOT NULL,
+                        team TEXT,
                         division TEXT,
                         game_details TEXT,
-                        request_type TEXT,
                         reason TEXT NOT NULL,
                         submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         status TEXT DEFAULT 'Pending'
@@ -1643,9 +1646,9 @@ elif page == "✉️ Request Change":
                 # Insert the request
                 cursor.execute('''
                     INSERT INTO schedule_requests 
-                    (email, division, game_details, request_type, reason)
+                    (email, team, division, game_details, reason)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (email, selected_division, selected_game, request_type, reason))
+                ''', (email, selected_team, selected_division, selected_game, reason))
                 
                 conn.commit()
                 request_id = cursor.lastrowid
@@ -1658,9 +1661,8 @@ elif page == "✉️ Request Change":
                 with st.expander("View Submitted Request"):
                     st.write(f"**Request ID:** {request_id}")
                     st.write(f"**Email:** {email}")
-                    st.write(f"**Division:** {selected_division}")
+                    st.write(f"**Team:** {selected_team_display}")
                     st.write(f"**Game:** {selected_game}")
-                    st.write(f"**Type:** {request_type}")
                     st.write(f"**Reason:** {reason}")
 
 elif page == "📋 View Requests*":
@@ -1681,19 +1683,37 @@ elif page == "📋 View Requests*":
         st.info("No requests submitted yet. The requests table will be created when the first request is submitted.")
         conn.close()
     else:
-        requests_df = pd.read_sql("""
-            SELECT 
-                id,
-                email,
-                division,
-                game_details,
-                request_type,
-                reason,
-                submitted_at,
-                status
-            FROM schedule_requests
-            ORDER BY submitted_at DESC
-        """, conn)
+        # Try to get data - handle if request_type column exists or not
+        try:
+            requests_df = pd.read_sql("""
+                SELECT 
+                    id,
+                    email,
+                    team,
+                    division,
+                    game_details,
+                    reason,
+                    submitted_at,
+                    status
+                FROM schedule_requests
+                ORDER BY submitted_at DESC
+            """, conn)
+        except:
+            # Fallback for old schema with request_type
+            requests_df = pd.read_sql("""
+                SELECT 
+                    id,
+                    email,
+                    division,
+                    game_details,
+                    request_type,
+                    reason,
+                    submitted_at,
+                    status
+                FROM schedule_requests
+                ORDER BY submitted_at DESC
+            """, conn)
+        
         conn.close()
         
         if len(requests_df) == 0:
@@ -1711,12 +1731,24 @@ elif page == "📋 View Requests*":
             # Display count
             st.metric("Total Requests", len(filtered_requests))
             
-            # Display requests
-            st.dataframe(
-                filtered_requests,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
+            # Determine which columns to show
+            if 'team' in filtered_requests.columns:
+                column_config = {
+                    "id": "ID",
+                    "email": "Email",
+                    "team": "Team",
+                    "division": "Division",
+                    "game_details": "Game",
+                    "reason": st.column_config.TextColumn("Reason", width="large"),
+                    "submitted_at": st.column_config.DatetimeColumn(
+                        "Submitted", 
+                        format="MMM D, YYYY h:mm A"
+                    ),
+                    "status": "Status"
+                }
+            else:
+                # Old schema compatibility
+                column_config = {
                     "id": "ID",
                     "email": "Email",
                     "division": "Division",
@@ -1729,6 +1761,13 @@ elif page == "📋 View Requests*":
                     ),
                     "status": "Status"
                 }
+            
+            # Display requests
+            st.dataframe(
+                filtered_requests,
+                use_container_width=True,
+                hide_index=True,
+                column_config=column_config
             )
             
             # Download button
