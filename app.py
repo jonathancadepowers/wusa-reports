@@ -46,6 +46,7 @@ page = st.sidebar.radio(
         "👥 Team Schedules",
         "📋 Team vs Date Matrix",
         "📊 Division Summary",
+        "📅 Teams by Day",
         "✉️ Request Change",
         "✏️ Edit Game*",
         "📋 View Requests*"
@@ -859,6 +860,78 @@ elif page == "✏️ Edit Game*":
                 st.success(f"✅ Game #{new_game_num} updated successfully!")
                 st.info("🔄 Page will reload with updated data...")
                 st.rerun()
+
+elif page == "📅 Teams by Day":
+    st.title("📅 Teams by Day")
+    
+    # Get all unique dates sorted
+    all_dates = sorted(df['Game Date'].unique())
+    
+    # Get all divisions
+    divisions = sort_divisions(df['Division'].unique())
+    
+    # Create matrix data
+    matrix_rows = []
+    
+    for division in divisions:
+        # Filter games for this division
+        div_df = df[df['Division'] == division].copy()
+        
+        # Get all teams in this division
+        home_teams = div_df['Home'].dropna().unique()
+        away_teams = div_df['Away'].dropna().unique()
+        all_teams = sorted(set(list(home_teams) + list(away_teams)))
+        
+        # Add division header row
+        division_row = {'Division': division, 'Team': ''}
+        for date in all_dates:
+            division_row[date] = ''
+        division_row['#N/A'] = ''
+        division_row['nd Total'] = ''
+        matrix_rows.append(division_row)
+        
+        # Add row for each team
+        for team in all_teams:
+            team_row = {'Division': '', 'Team': team}
+            team_total = 0
+            dates_with_multiple_games = 0
+            
+            # Count games per date for this team
+            for date in all_dates:
+                games_on_date = div_df[
+                    ((div_df['Home'] == team) | (div_df['Away'] == team)) &
+                    (div_df['Game Date'] == date)
+                ]
+                count = len(games_on_date)
+                
+                if count > 1:
+                    dates_with_multiple_games += 1
+                
+                team_row[date] = count if count > 0 else ''
+                team_total += count
+            
+            team_row['#N/A'] = dates_with_multiple_games if dates_with_multiple_games > 0 else ''
+            team_row['nd Total'] = team_total
+            matrix_rows.append(team_row)
+    
+    # Convert to DataFrame
+    matrix_df = pd.DataFrame(matrix_rows)
+    
+    # Display as styled table
+    st.dataframe(
+        matrix_df,
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Download button
+    csv = matrix_df.to_csv(index=False)
+    st.download_button(
+        "📥 Download as CSV",
+        csv,
+        "teams_by_day.csv",
+        "text/csv"
+    )
 
 elif page == "✉️ Request Change":
     st.title("✉️ Request Change")
