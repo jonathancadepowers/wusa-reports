@@ -1045,172 +1045,72 @@ elif page == "📆 Monthly Calendar":
         cal = calendar.monthcalendar(selected_year, selected_month)
         month_name = calendar.month_name[selected_month]
         
-        # Create calendar HTML
-        html = f"""
-        <style>
-            .calendar {{
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 2rem;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            }}
-            .calendar th {{
-                background-color: #f0f2f6;
-                padding: 1rem;
-                text-align: center;
-                font-weight: 600;
-                border: 1px solid #ddd;
-            }}
-            .calendar td {{
-                border: 1px solid #ddd;
-                padding: 0;
-                height: 100px;
-                vertical-align: top;
-                position: relative;
-                background-color: white;
-            }}
-            .calendar td.empty {{
-                background-color: #f8f9fa;
-            }}
-            .calendar td.has-games {{
-                cursor: pointer;
-                background-color: #e3f2fd;
-            }}
-            .calendar td.has-games:hover {{
-                background-color: #bbdefb;
-            }}
-            .calendar td.selected {{
-                background-color: #2196F3 !important;
-                color: white;
-            }}
-            .day-number {{
-                position: absolute;
-                top: 0.5rem;
-                left: 0.5rem;
-                font-weight: 600;
-                font-size: 1.1rem;
-            }}
-            .game-count {{
-                position: absolute;
-                bottom: 0.5rem;
-                right: 0.5rem;
-                background-color: #2196F3;
-                color: white;
-                border-radius: 50%;
-                width: 2rem;
-                height: 2rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: 600;
-                font-size: 1rem;
-            }}
-            .selected .game-count {{
-                background-color: white;
-                color: #2196F3;
-            }}
-        </style>
-        <table class="calendar">
-            <thead>
-                <tr>
-                    <th>Sunday</th>
-                    <th>Monday</th>
-                    <th>Tuesday</th>
-                    <th>Wednesday</th>
-                    <th>Thursday</th>
-                    <th>Friday</th>
-                    <th>Saturday</th>
-                </tr>
-            </thead>
-            <tbody>
-        """
+        # Display month header
+        st.markdown(f"### {month_name} {selected_year}")
         
-        # Create clickable dates mapping
-        date_to_index = {}
-        index = 0
+        # Create calendar using Streamlit columns
+        # Header row
+        day_names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        header_cols = st.columns(7)
+        for idx, day_name in enumerate(day_names):
+            with header_cols[idx]:
+                st.markdown(f"**{day_name}**")
         
+        # Calendar rows
         for week in cal:
-            html += "<tr>"
-            for day in week:
-                if day == 0:
-                    html += '<td class="empty"></td>'
-                else:
-                    date_obj = datetime(selected_year, selected_month, day).date()
-                    game_count = date_counts.get(date_obj, 0)
-                    
-                    if game_count > 0:
-                        date_to_index[str(date_obj)] = index
-                        has_games_class = "has-games"
-                        game_badge = f'<div class="game-count">{game_count}</div>'
+            week_cols = st.columns(7)
+            for idx, day in enumerate(week):
+                with week_cols[idx]:
+                    if day == 0:
+                        # Empty day
+                        st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
                     else:
-                        has_games_class = ""
-                        game_badge = ""
-                    
-                    html += f'''
-                        <td class="{has_games_class}" data-date="{date_obj}">
-                            <div class="day-number">{day}</div>
-                            {game_badge}
-                        </td>
-                    '''
-                    index += 1
-            html += "</tr>"
+                        date_obj = datetime(selected_year, selected_month, day).date()
+                        game_count = date_counts.get(date_obj, 0)
+                        
+                        if game_count > 0:
+                            # Create a button for days with games
+                            button_label = f"**{day}**\n\n🎮 {game_count}"
+                            if st.button(
+                                button_label,
+                                key=f"cal_{date_obj}",
+                                use_container_width=True,
+                                type="primary" if st.session_state.get('selected_calendar_date') == date_obj else "secondary"
+                            ):
+                                st.session_state.selected_calendar_date = date_obj
+                                st.rerun()
+                        else:
+                            # Just show the day number for days without games
+                            st.markdown(f"<div style='text-align: center; padding: 1rem; color: #999;'>{day}</div>", unsafe_allow_html=True)
         
-        html += """
-            </tbody>
-        </table>
-        """
+        st.markdown("---")
         
-        # Display calendar using components.html for proper rendering
-        import streamlit.components.v1 as components
-        components.html(html, height=700, scrolling=False)
-        
-        # Since we can't capture clicks from the HTML calendar in components.html,
-        # create a date selector dropdown instead
-        st.markdown("### View Games by Date:")
-        
-        # Get dates with games for this month
-        month_start = pd.Timestamp(selected_year, selected_month, 1)
-        month_end = pd.Timestamp(selected_year, selected_month, monthrange(selected_year, selected_month)[1])
-        
-        dates_with_games = sorted([
-            date for date in date_counts.keys() 
-            if month_start.date() <= date <= month_end.date() and date_counts[date] > 0
-        ])
-        
-        if dates_with_games:
-            # Create a selectbox for date selection
-            date_options = [
-                f"{pd.Timestamp(date).strftime('%A, %B %d, %Y')} ({date_counts[date]} games)"
-                for date in dates_with_games
-            ]
+        # Show games for selected date
+        if 'selected_calendar_date' in st.session_state:
+            selected_date = st.session_state.selected_calendar_date
             
-            selected_date_str = st.selectbox(
-                "Select a date to view games:",
-                date_options,
-                key="calendar_date_select"
-            )
-            
-            # Parse selected date
-            selected_date_idx = date_options.index(selected_date_str)
-            selected_date = dates_with_games[selected_date_idx]
-            
-            # Show games for selected date
-            st.markdown(f"### Games on {pd.Timestamp(selected_date).strftime('%A, %B %d, %Y')}")
-            
-            # Filter games for selected date
-            date_games = df[df['Date_Parsed'].dt.date == selected_date].copy()
-            
-            # Display games
-            display_cols = ['Game #', 'Division', 'Time', 'Field', 'Home', 'Away']
-            st.dataframe(
-                date_games[display_cols],
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            st.info(f"**Total: {len(date_games)} games**")
+            # Make sure the selected date is in this month
+            if (selected_date.year == selected_year and selected_date.month == selected_month 
+                and selected_date in date_counts and date_counts[selected_date] > 0):
+                
+                st.markdown(f"### Games on {pd.Timestamp(selected_date).strftime('%A, %B %d, %Y')}")
+                
+                # Filter games for selected date
+                date_games = df[df['Date_Parsed'].dt.date == selected_date].copy()
+                
+                # Display games
+                display_cols = ['Game #', 'Division', 'Time', 'Field', 'Home', 'Away']
+                st.dataframe(
+                    date_games[display_cols],
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                st.info(f"**Total: {len(date_games)} games**")
+            else:
+                st.info("Select a date on the calendar to view games.")
         else:
-            st.info("No games scheduled for this month.")
+            st.info("Select a date on the calendar to view games.")
     else:
         st.warning("No games found in the schedule.")
 
