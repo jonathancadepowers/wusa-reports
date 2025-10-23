@@ -173,11 +173,37 @@ if page == "📅 Full Schedule":
 elif page == "🏟️ Field Pivot":
     st.title("🏟️ Field Pivot Report")
     
-    # Week filter
-    selected_week = st.selectbox("Select Week", sorted(df['Week'].unique()))
+    # Filters in columns
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        selected_week = st.selectbox("Select Week", sorted(df['Week'].unique()))
+    with col2:
+        # Get min and max dates from the schedule
+        min_date = df['Game Date Parsed'].min().date()
+        max_date = df['Game Date Parsed'].max().date()
+        
+        start_date = st.date_input(
+            "Start Date",
+            value=min_date,
+            min_value=min_date,
+            max_value=max_date,
+            key="field_pivot_start_date"
+        )
+    with col3:
+        end_date = st.date_input(
+            "End Date",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date,
+            key="field_pivot_end_date"
+        )
     
-    # Filter by week
-    week_df = df[df['Week'] == selected_week]
+    # Filter by week and date range
+    week_df = df[
+        (df['Week'] == selected_week) &
+        (df['Game Date Parsed'].dt.date >= start_date) &
+        (df['Game Date Parsed'].dt.date <= end_date)
+    ]
     
     # Create a dictionary to store game details for tooltips
     game_details = {}
@@ -304,7 +330,6 @@ elif page == "🏟️ Field Pivot":
     
     html += "</tbody></table>"
     
-    st.markdown("💡 **Tip:** Hover over any division to see game details!", unsafe_allow_html=True)
     st.markdown(html, unsafe_allow_html=True)
     
     # Download button
