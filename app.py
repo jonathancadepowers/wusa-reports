@@ -594,15 +594,15 @@ elif page == "📊 Division Summary":
             background-color: #f8f9fa;
         }
         .total-row {
-            background-color: #e8f4f8 !important;
+            background-color: #fff3cd !important;
             font-weight: 600;
         }
         .total-column {
-            background-color: #e8f4f8;
+            background-color: #d1ecf1;
             font-weight: 600;
         }
         .total-cell {
-            background-color: #d4e9f2 !important;
+            background-color: #ffc107 !important;
             font-weight: 700;
         }
     </style>
