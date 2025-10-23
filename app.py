@@ -1106,8 +1106,11 @@ elif page == "📆 Monthly Calendar":
             with header_cols[idx]:
                 st.markdown(f"<div style='text-align: center; font-weight: 600; padding: 0.5rem; border: 1px solid #ddd; background-color: #f0f2f6;'>{day_name}</div>", unsafe_allow_html=True)
         
+        # Add spacing after header
+        st.markdown("<div style='margin-bottom: 0.5rem;'></div>", unsafe_allow_html=True)
+        
         # Calendar rows
-        for week in cal:
+        for week_idx, week in enumerate(cal):
             week_cols = st.columns(7)
             for idx, day in enumerate(week):
                 with week_cols[idx]:
@@ -1134,6 +1137,10 @@ elif page == "📆 Monthly Calendar":
                         else:
                             # Just show the day number for days without games
                             st.markdown(f"<div class='calendar-day-no-games'>{day}</div>", unsafe_allow_html=True)
+            
+            # Add spacing between rows (except after last row)
+            if week_idx < len(cal) - 1:
+                st.markdown("<div style='margin-bottom: 0.5rem;'></div>", unsafe_allow_html=True)
         
         st.markdown("---")
         
