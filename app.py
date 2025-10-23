@@ -1160,7 +1160,9 @@ elif page == "📆 Monthly Calendar":
         </table>
         """
         
-        st.markdown(html, unsafe_allow_html=True)
+        # Display calendar using components.html for proper rendering
+        import streamlit.components.v1 as components
+        components.html(html, height=700, scrolling=False)
         
         # Create clickable date buttons below calendar
         st.markdown("### Select a Date:")
