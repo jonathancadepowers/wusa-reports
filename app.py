@@ -30,7 +30,6 @@ st.sidebar.markdown("**Fall 2025**")
 # Initialize session state
 if 'selected_page' not in st.session_state:
     st.session_state.selected_page = "📅 Full Schedule"
-if 'is_admin_page' not in st.session_state:
     st.session_state.is_admin_page = False
 
 # Main pages
@@ -43,8 +42,10 @@ main_options = [
     "✉️ Request Change",
 ]
 
-# Find index for main radio
-if not st.session_state.is_admin_page and st.session_state.selected_page in main_options:
+# Set index to None if admin page is selected, otherwise find the current page
+if st.session_state.is_admin_page:
+    main_index = None
+elif st.session_state.selected_page in main_options:
     main_index = main_options.index(st.session_state.selected_page)
 else:
     main_index = 0
@@ -69,8 +70,10 @@ admin_options = [
     "📋 View Requests"
 ]
 
-# Find index for admin radio
-if st.session_state.is_admin_page and st.session_state.selected_page in admin_options:
+# Set index to None if main page is selected, otherwise find the current admin page
+if not st.session_state.is_admin_page:
+    admin_index = None
+elif st.session_state.selected_page in admin_options:
     admin_index = admin_options.index(st.session_state.selected_page)
 else:
     admin_index = 0
@@ -82,31 +85,14 @@ admin_page = st.sidebar.radio(
     key="admin_pages"
 )
 
-# Only update if something actually changed
-page_changed = False
+# Update state when user clicks
+if main_page is not None and (st.session_state.is_admin_page or main_page != st.session_state.selected_page):
+    st.session_state.selected_page = main_page
+    st.session_state.is_admin_page = False
 
-if not st.session_state.is_admin_page:
-    # User is on a main page
-    if main_page != st.session_state.selected_page:
-        # Main page changed
-        st.session_state.selected_page = main_page
-        page_changed = True
-    elif admin_page != admin_options[admin_index]:
-        # User clicked an admin page
-        st.session_state.selected_page = admin_page
-        st.session_state.is_admin_page = True
-        page_changed = True
-else:
-    # User is on an admin page
-    if admin_page != st.session_state.selected_page:
-        # Admin page changed
-        st.session_state.selected_page = admin_page
-        page_changed = True
-    elif main_page != main_options[main_index]:
-        # User clicked a main page
-        st.session_state.selected_page = main_page
-        st.session_state.is_admin_page = False
-        page_changed = True
+if admin_page is not None and (not st.session_state.is_admin_page or admin_page != st.session_state.selected_page):
+    st.session_state.selected_page = admin_page
+    st.session_state.is_admin_page = True
 
 # Use the selected page
 page = st.session_state.selected_page
