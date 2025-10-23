@@ -42,7 +42,7 @@ page = st.sidebar.radio(
     ]
 )
 
-st.sidebar.markdown("*Admin Pagesssss")
+st.sidebar.markdown("*Admin Pages")
 
 st.sidebar.info(f"**Total Games:** {len(df)}")
 
