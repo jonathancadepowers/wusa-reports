@@ -724,35 +724,44 @@ elif page == "📊 Division Summary":
 elif page == "✏️ Edit Game*":
     st.title("✏️ Edit Game")
     
-    st.markdown("""
-    **Administrator Interface:** Search for a game and edit any field including 
-    date, time, field, teams, division, etc.
-    """)
-    
     # Step 1: Search/Select a game
     st.markdown("### Step 1: Find the Game to Edit")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         search_division = st.selectbox(
-            "Filter by Division", 
+            "Division", 
             ["All"] + sort_divisions(df['Division'].unique())
         )
     with col2:
-        search_week = st.selectbox(
-            "Filter by Week",
-            ["All"] + sorted(df['Week'].unique())
+        # Start Date filter
+        start_date = st.date_input(
+            "Start Date",
+            value=None,
+            help="Filter games on or after this date"
+        )
+    with col3:
+        # End Date filter
+        end_date = st.date_input(
+            "End Date",
+            value=None,
+            help="Filter games on or before this date"
         )
     
     # Filter games
     search_df = df.copy()
     if search_division != "All":
         search_df = search_df[search_df['Division'] == search_division]
-    if search_week != "All":
-        search_df = search_df[search_df['Week'] == search_week]
     
-    # Display filtered games with Game # as identifier
-    st.markdown(f"**Found {len(search_df)} games**")
+    # Apply date filters if provided
+    if start_date is not None:
+        search_df['Date_Parsed'] = pd.to_datetime(search_df['Game Date'])
+        search_df = search_df[search_df['Date_Parsed'].dt.date >= start_date]
+    
+    if end_date is not None:
+        if 'Date_Parsed' not in search_df.columns:
+            search_df['Date_Parsed'] = pd.to_datetime(search_df['Game Date'])
+        search_df = search_df[search_df['Date_Parsed'].dt.date <= end_date]
     
     # Create game selection options
     game_options = []
@@ -766,6 +775,10 @@ elif page == "✏️ Edit Game*":
         st.info("No games found with selected filters")
     else:
         selected_game_display = st.selectbox("Game to Edit", game_options)
+        
+        # Display filtered games count after dropdown
+        st.markdown(f"*Found {len(search_df)} games*")
+        
         selected_idx = game_indices[game_options.index(selected_game_display)]
         selected_game = df.loc[selected_idx]
         
