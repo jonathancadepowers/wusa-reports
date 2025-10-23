@@ -34,6 +34,9 @@ def sort_divisions(divisions):
 df = load_games()
 
 # Sidebar
+# Add logo at the top
+st.sidebar.image("wusa_logo.png", width=int(300 * 0.35))  # 35% of a reasonable base width
+
 st.sidebar.title("⚾ WUSA Schedule")
 st.sidebar.markdown("**Fall 2025**")
 
