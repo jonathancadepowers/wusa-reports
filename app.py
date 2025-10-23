@@ -27,35 +27,68 @@ df = load_games()
 st.sidebar.title("⚾ WUSA Schedule")
 st.sidebar.markdown("**Fall 2025**")
 
-# Create options list with admin section
-options = [
+# Initialize session state
+if 'selected_page' not in st.session_state:
+    st.session_state.selected_page = "📅 Full Schedule"
+if 'is_admin_page' not in st.session_state:
+    st.session_state.is_admin_page = False
+
+# Main pages
+main_options = [
     "📅 Full Schedule", 
     "🏟️ Field Pivot", 
     "👥 Team Schedules",
     "📋 Team vs Date Matrix",
     "📊 Division Summary by Week",
     "✉️ Request Change",
-    "ADMIN_SEPARATOR",  # Placeholder for separator
+]
+
+# Find index for main radio
+main_index = main_options.index(st.session_state.selected_page) if not st.session_state.is_admin_page and st.session_state.selected_page in main_options else 0
+
+main_page = st.sidebar.radio(
+    "",
+    main_options,
+    index=main_index,
+    key="main_pages"
+)
+
+# Admin section header - using markdown with custom styling
+st.sidebar.markdown("""
+<div style="margin-top: 1rem; margin-bottom: 0.5rem; padding-left: 0.25rem; font-weight: 600; font-size: 0.875rem; color: rgba(49, 51, 63, 0.6);">
+Admin
+</div>
+""", unsafe_allow_html=True)
+
+# Admin pages
+admin_options = [
     "✏️ Edit Game",
     "📋 View Requests"
 ]
 
-# Custom format function to display separator
-def format_option(option):
-    if option == "ADMIN_SEPARATOR":
-        return "─── Admin ───"
-    return option
+# Find index for admin radio
+admin_index = admin_options.index(st.session_state.selected_page) if st.session_state.is_admin_page and st.session_state.selected_page in admin_options else 0
 
-# Single page selection with all options
-page = st.sidebar.radio(
+admin_page = st.sidebar.radio(
     "",
-    options,
-    format_func=format_option
+    admin_options,
+    index=admin_index,
+    key="admin_pages"
 )
 
-# If separator is selected, default to Full Schedule
-if page == "ADMIN_SEPARATOR":
-    page = "📅 Full Schedule"
+# Update session state based on which was clicked
+if main_page != st.session_state.selected_page and main_page in main_options:
+    st.session_state.selected_page = main_page
+    st.session_state.is_admin_page = False
+    st.rerun()
+
+if admin_page != st.session_state.selected_page and admin_page in admin_options:
+    st.session_state.selected_page = admin_page
+    st.session_state.is_admin_page = True
+    st.rerun()
+
+# Use the selected page
+page = st.session_state.selected_page
 
 st.sidebar.info(f"**Total Games:** {len(df)}")
 
