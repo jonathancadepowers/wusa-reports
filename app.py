@@ -421,25 +421,65 @@ elif page == "🏟️ Games by Field":
         for col in all_fields:
             pivot_df.loc[pivot_df.index[:-1], col] = pivot_df.loc[pivot_df.index[:-1], col].replace(0, '')
         
-        # Display the pivot table
-        st.dataframe(
-            pivot_df,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                'Time': st.column_config.TextColumn('Time', width='medium'),
-                **{field: st.column_config.TextColumn(field, width='small') for field in all_fields},
-                'Grand Total': st.column_config.NumberColumn('Grand Total', width='small')
+        # Generate HTML table with styling
+        html = """
+        <style>
+            .field-pivot-table {
+                border-collapse: collapse;
+                width: 100%;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                font-size: 14px;
             }
-        )
+            .field-pivot-table th, .field-pivot-table td {
+                border: 1px solid #ddd;
+                padding: 8px 12px;
+                text-align: center;
+            }
+            .field-pivot-table th {
+                background-color: #f0f2f6;
+                font-weight: 600;
+            }
+            .field-pivot-table tr:hover {
+                background-color: #f8f9fa;
+            }
+            .totals-cell {
+                background-color: #e8f4f8;
+                font-weight: bold;
+            }
+        </style>
+        <table class="field-pivot-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+        """
         
-        # Show game details in expandable section
-        with st.expander("📋 View Game Details for This Date"):
-            st.dataframe(
-                date_df[['Time', 'Field', 'Division', 'Home', 'Away']].sort_values(['Time', 'Field']),
-                use_container_width=True,
-                hide_index=True
-            )
+        # Add column headers
+        for field in all_fields:
+            html += f"<th>{field}</th>"
+        html += "<th>Grand Total</th></tr></thead><tbody>"
+        
+        # Add data rows
+        for idx, row in pivot_df.iterrows():
+            is_total_row = row['Time'] == 'Grand Total'
+            html += "<tr>"
+            
+            # Time column
+            cell_class = 'totals-cell' if is_total_row else ''
+            html += f'<th class="{cell_class}">{row["Time"]}</th>'
+            
+            # Field columns
+            for field in all_fields:
+                cell_class = 'totals-cell' if is_total_row else ''
+                value = row[field] if row[field] != '' else ''
+                html += f'<td class="{cell_class}">{value}</td>'
+            
+            # Grand Total column
+            html += f'<td class="totals-cell">{row["Grand Total"]}</td>'
+            html += "</tr>"
+        
+        html += "</tbody></table>"
+        
+        st.markdown(html, unsafe_allow_html=True)
         
         # Download button
         csv = pivot_df.to_csv(index=False)
@@ -589,6 +629,17 @@ elif page == "📋 Team vs Date Matrix":
     # Convert to DataFrame
     matrix_df = pd.DataFrame(matrix_data)
     
+    # Calculate totals row (games per date)
+    totals_row = {'Team': 'Grand Total'}
+    for date in sorted(division_df['Game Date'].unique()):
+        short_date = date_headers[date]
+        games_on_date = len(division_df[division_df['Game Date'] == date])
+        totals_row[short_date] = games_on_date
+    totals_row['Total Games'] = len(division_df)
+    
+    # Append totals row
+    matrix_df = pd.concat([matrix_df, pd.DataFrame([totals_row])], ignore_index=True)
+    
     # Set Team as index
     matrix_df = matrix_df.set_index('Team')
     
@@ -596,13 +647,68 @@ elif page == "📋 Team vs Date Matrix":
     for col in matrix_df.columns:
         matrix_df[col] = matrix_df[col].apply(lambda x: int(x) if pd.notna(x) and x != '' else '')
     
-    # Display the matrix using st.data_editor for better styling support
-    st.data_editor(
-        matrix_df,
-        use_container_width=True,
-        disabled=True,  # Make it read-only
-        hide_index=False
-    )
+    # Generate HTML table with styling
+    html = """
+    <style>
+        .matrix-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+        }
+        .matrix-table th, .matrix-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        .matrix-table th {
+            background-color: #f0f2f6;
+            font-weight: 600;
+        }
+        .matrix-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .matrix-totals-cell {
+            background-color: #e8f4f8;
+            font-weight: bold;
+        }
+    </style>
+    <table class="matrix-table">
+        <thead>
+            <tr>
+                <th>Team</th>
+    """
+    
+    # Add column headers (dates)
+    date_columns = [col for col in matrix_df.columns if col != 'Total Games']
+    for date_col in date_columns:
+        html += f"<th>{date_col}</th>"
+    html += "<th>Total Games</th></tr></thead><tbody>"
+    
+    # Add data rows
+    for team_name in matrix_df.index:
+        is_total_row = team_name == 'Grand Total'
+        html += "<tr>"
+        
+        # Team name column
+        cell_class = 'matrix-totals-cell' if is_total_row else ''
+        html += f'<th class="{cell_class}">{team_name}</th>'
+        
+        # Date columns
+        for date_col in date_columns:
+            cell_class = 'matrix-totals-cell' if is_total_row else ''
+            value = matrix_df.loc[team_name, date_col]
+            display_value = value if value != '' else ''
+            html += f'<td class="{cell_class}">{display_value}</td>'
+        
+        # Total Games column (always highlighted)
+        total_value = matrix_df.loc[team_name, 'Total Games']
+        html += f'<td class="matrix-totals-cell">{total_value}</td>'
+        html += "</tr>"
+    
+    html += "</tbody></table>"
+    
+    st.markdown(html, unsafe_allow_html=True)
     
     # Download button
     csv = matrix_df.to_csv()
