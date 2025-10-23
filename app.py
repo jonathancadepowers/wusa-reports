@@ -1069,10 +1069,30 @@ elif page == "✏️ Edit Game*":
                 try:
                     # Debug: Show what we're about to save
                     st.write("**DEBUG - Values to save:**")
-                    st.write(f"Game #: {selected_game['Game #']}")
+                    st.write(f"Game #: {selected_game['Game #']} (type: {type(selected_game['Game #'])})")
                     st.write(f"Old Date: {selected_game['Game Date']}, New Date: {new_game_date}")
                     st.write(f"Old Field: {selected_game['Field']}, New Field: {new_field}")
                     st.write(f"Old Time: {selected_game['Time']}, New Time: {new_time}")
+                    
+                    # Check if game exists in database
+                    cursor.execute("SELECT \"Game #\", \"Game Date\", Field FROM games WHERE \"Game #\" = ?", (selected_game['Game #'],))
+                    exists_check = cursor.fetchone()
+                    st.write(f"**DEBUG - Game exists check: {exists_check}**")
+                    
+                    # Try with string conversion
+                    game_num_str = str(selected_game['Game #'])
+                    cursor.execute("SELECT \"Game #\", \"Game Date\", Field FROM games WHERE \"Game #\" = ?", (game_num_str,))
+                    exists_check_str = cursor.fetchone()
+                    st.write(f"**DEBUG - Game exists check (as string): {exists_check_str}**")
+                    
+                    # Try with int conversion
+                    try:
+                        game_num_int = int(selected_game['Game #'])
+                        cursor.execute("SELECT \"Game #\", \"Game Date\", Field FROM games WHERE \"Game #\" = ?", (game_num_int,))
+                        exists_check_int = cursor.fetchone()
+                        st.write(f"**DEBUG - Game exists check (as int): {exists_check_int}**")
+                    except:
+                        st.write("**DEBUG - Could not convert to int**")
                     
                     # Update the database - including recalculated Week and Daycode and audit trail
                     update_query = """
