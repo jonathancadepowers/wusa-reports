@@ -1051,34 +1051,49 @@ elif page == "📆 Monthly Calendar":
         # Add custom CSS for calendar styling
         st.markdown("""
         <style>
-            /* Calendar cell borders and spacing */
+            /* Calendar cell borders and consistent height */
             div[data-testid="column"] {
                 border: 1px solid #ddd;
                 padding: 0.5rem;
-                min-height: 100px;
+                min-height: 120px;
+                max-height: 120px;
+                display: flex;
+                flex-direction: column;
             }
             
-            /* Style for day buttons */
+            /* Style for day buttons - consistent height */
             .stButton button {
                 width: 100%;
-                height: 100%;
-                min-height: 80px;
+                min-height: 100px !important;
+                max-height: 100px !important;
                 position: relative;
+                white-space: pre-line;
             }
             
-            /* Game count badge */
-            .game-badge {
-                background-color: #000;
-                color: white;
-                border-radius: 50%;
-                width: 32px;
-                height: 32px;
-                display: inline-flex;
+            /* Make the word "Games:" appear in red - targeting button text */
+            .stButton button p {
+                color: inherit;
+            }
+            
+            /* Non-game day cells */
+            .calendar-day-empty {
+                height: 100px;
+                border: 1px solid #ddd;
+                background-color: #f8f9fa;
+            }
+            
+            .calendar-day-no-games {
+                text-align: center;
+                padding: 2rem;
+                color: #999;
+                font-size: 18px;
+                font-weight: 600;
+                border: 1px solid #ddd;
+                min-height: 100px;
+                max-height: 100px;
+                display: flex;
                 align-items: center;
                 justify-content: center;
-                font-weight: 600;
-                font-size: 14px;
-                margin-top: 8px;
             }
         </style>
         """, unsafe_allow_html=True)
@@ -1098,23 +1113,18 @@ elif page == "📆 Monthly Calendar":
                 with week_cols[idx]:
                     if day == 0:
                         # Empty day
-                        st.markdown("<div style='height: 100px; border: 1px solid #ddd; background-color: #f8f9fa;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div class='calendar-day-empty'></div>", unsafe_allow_html=True)
                     else:
                         date_obj = datetime(selected_year, selected_month, day).date()
                         game_count = date_counts.get(date_obj, 0)
                         
                         if game_count > 0:
-                            # Create a button for days with games
-                            # Use HTML for better formatting
-                            button_html = f"""
-                            <div style='text-align: center; font-size: 18px; font-weight: 600;'>{day}</div>
-                            <div style='text-align: center;'>
-                                <div class='game-badge'>{game_count}</div>
-                            </div>
-                            """
+                            # Create a button for days with games with colored game count
+                            # Note: Streamlit doesn't support HTML in button labels, so we'll format it with line breaks
+                            button_label = f"{day}\n\n:red[Games: {game_count}]"
                             
                             if st.button(
-                                f"{day}\n\n{game_count}",
+                                button_label,
                                 key=f"cal_{date_obj}",
                                 use_container_width=True,
                                 type="primary" if st.session_state.get('selected_calendar_date') == date_obj else "secondary"
@@ -1123,7 +1133,7 @@ elif page == "📆 Monthly Calendar":
                                 st.rerun()
                         else:
                             # Just show the day number for days without games
-                            st.markdown(f"<div style='text-align: center; padding: 2rem; color: #999; font-size: 18px; font-weight: 600; border: 1px solid #ddd; min-height: 100px;'>{day}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div class='calendar-day-no-games'>{day}</div>", unsafe_allow_html=True)
         
         st.markdown("---")
         
