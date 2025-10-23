@@ -852,14 +852,6 @@ elif page == "✏️ Edit Game*":
                 st.text_input("Division", value=str(selected_game['Division']), disabled=True)
                 st.text_input("Week", value=str(selected_game['Week']), disabled=True)
                 st.text_input("Daycode", value=str(selected_game['Daycode']), disabled=True)
-                
-                # Status - dropdown
-                current_status = str(selected_game['Status'])
-                if current_status in all_statuses:
-                    status_index = all_statuses.index(current_status)
-                else:
-                    status_index = 0
-                new_status = st.selectbox("Status", all_statuses, index=status_index)
             
             # Additional fields if they exist
             col4, col5, col6 = st.columns(3)
