@@ -1404,21 +1404,68 @@ elif page == "📅 Teams by Day":
     # Replace empty strings with None, then fillna for display
     matrix_df = matrix_df.replace('', None).fillna('')
     
-    # Apply styling for Grand Total column background
-    def highlight_total_column(col):
-        if col.name == 'Grand Total':
-            return ['background-color: #d1ecf1; font-weight: 600'] * len(col)
-        else:
-            return [''] * len(col)
+    # Generate HTML table with styling
+    html = """
+    <style>
+        .teams-by-day-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+        }
+        .teams-by-day-table th, .teams-by-day-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        .teams-by-day-table th:first-child, .teams-by-day-table td:first-child {
+            text-align: left;
+        }
+        .teams-by-day-table th {
+            background-color: #f0f2f6;
+            font-weight: 600;
+        }
+        .teams-by-day-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .total-column {
+            background-color: #d1ecf1;
+            font-weight: 600;
+        }
+    </style>
+    <table class="teams-by-day-table">
+        <thead>
+            <tr>
+    """
     
-    styled_df = matrix_df.style.apply(highlight_total_column)
+    # Add column headers
+    for col in matrix_df.columns:
+        html += f"<th>{col}</th>"
+    html += "</tr></thead><tbody>"
     
-    st.data_editor(
-        styled_df,
-        use_container_width=True,
-        hide_index=True,
-        disabled=True  # Make it read-only
-    )
+    # Add data rows
+    for idx, row in matrix_df.iterrows():
+        html += "<tr>"
+        
+        for col in matrix_df.columns:
+            value = row[col]
+            display_value = value if value != '' else ''
+            
+            # Apply total column styling to Grand Total column
+            if col == 'Grand Total':
+                cell_tag = 'td' if col != 'Team' else 'td'
+                html += f'<{cell_tag} class="total-column">{display_value}</{cell_tag}>'
+            else:
+                if col == 'Team':
+                    html += f'<td>{display_value}</td>'
+                else:
+                    html += f'<td>{display_value}</td>'
+        
+        html += "</tr>"
+    
+    html += "</tbody></table>"
+    
+    st.markdown(html, unsafe_allow_html=True)
     
     # Download button
     csv = matrix_df.to_csv(index=False)
