@@ -956,6 +956,7 @@ elif page == "📅 Teams by Day":
         .tooltip {
             position: relative;
             cursor: help;
+            z-index: 100;
         }
         .tooltip .tooltiptext {
             visibility: hidden;
@@ -964,12 +965,10 @@ elif page == "📅 Teams by Day":
             color: #fff;
             text-align: center;
             border-radius: 6px;
-            padding: 5px;
-            position: absolute;
-            z-index: 99999;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -60px;
+            padding: 8px;
+            position: fixed;
+            z-index: 10000;
+            margin-top: -50px;
             opacity: 0;
             transition: opacity 0.3s;
             font-size: 12px;
@@ -1025,9 +1024,8 @@ elif page == "📅 Teams by Day":
     
     html += "</tbody></table>"
     
-    # Display the styled table using components for better rendering
-    import streamlit.components.v1 as components
-    components.html(html, height=600, scrolling=True)
+    # Display the styled table using st.markdown (better for tooltips than components.html)
+    st.markdown(html, unsafe_allow_html=True)
     
     # Download button
     csv = matrix_df.to_csv(index=False)
