@@ -864,55 +864,68 @@ elif page == "✏️ Edit Game*":
 elif page == "📅 Teams by Day":
     st.title("📅 Teams by Day")
     
-    # Get all unique dates sorted
-    all_dates = sorted(df['Game Date'].unique())
+    # Division filter
+    selected_division = st.selectbox(
+        "Division", 
+        sort_divisions(df['Division'].unique())
+    )
     
-    # Get all divisions
-    divisions = sort_divisions(df['Division'].unique())
+    # Filter games for selected division
+    div_df = df[df['Division'] == selected_division].copy()
+    
+    # Get all unique dates sorted
+    all_dates = sorted(div_df['Game Date'].unique())
+    
+    # Create date format mapping (M-11/3, T-12/1, etc.)
+    date_headers = {}
+    for date_str in all_dates:
+        # Parse the date
+        date_obj = pd.to_datetime(date_str)
+        # Get day of week abbreviation and format as M-11/3
+        day_abbr = date_obj.strftime('%a')[0]  # First letter of day (M, T, W, etc.)
+        month_day = date_obj.strftime('%-m/%-d')  # Month/Day without leading zeros
+        short_date = f"{day_abbr}-{month_day}"
+        date_headers[date_str] = short_date
+    
+    # Get all teams in this division
+    home_teams = div_df['Home'].dropna().unique()
+    away_teams = div_df['Away'].dropna().unique()
+    all_teams = sorted(set(list(home_teams) + list(away_teams)))
     
     # Create matrix data
     matrix_rows = []
     
-    for division in divisions:
-        # Filter games for this division
-        div_df = df[df['Division'] == division].copy()
+    # Add division header row
+    division_row = {'Division': selected_division, 'Team': ''}
+    for date in all_dates:
+        division_row[date_headers[date]] = ''
+    division_row['Dates with >1 Game'] = ''
+    division_row['Grand Total'] = ''
+    matrix_rows.append(division_row)
+    
+    # Add row for each team
+    for team in all_teams:
+        team_row = {'Division': '', 'Team': team}
+        team_total = 0
+        dates_with_multiple_games = 0
         
-        # Get all teams in this division
-        home_teams = div_df['Home'].dropna().unique()
-        away_teams = div_df['Away'].dropna().unique()
-        all_teams = sorted(set(list(home_teams) + list(away_teams)))
-        
-        # Add division header row
-        division_row = {'Division': division, 'Team': ''}
+        # Count games per date for this team
         for date in all_dates:
-            division_row[date] = ''
-        division_row['#N/A'] = ''
-        division_row['nd Total'] = ''
-        matrix_rows.append(division_row)
+            games_on_date = div_df[
+                ((div_df['Home'] == team) | (div_df['Away'] == team)) &
+                (div_df['Game Date'] == date)
+            ]
+            count = len(games_on_date)
+            
+            if count > 1:
+                dates_with_multiple_games += 1
+            
+            team_row[date_headers[date]] = count if count > 0 else ''
+            team_total += count
         
-        # Add row for each team
-        for team in all_teams:
-            team_row = {'Division': '', 'Team': team}
-            team_total = 0
-            dates_with_multiple_games = 0
-            
-            # Count games per date for this team
-            for date in all_dates:
-                games_on_date = div_df[
-                    ((div_df['Home'] == team) | (div_df['Away'] == team)) &
-                    (div_df['Game Date'] == date)
-                ]
-                count = len(games_on_date)
-                
-                if count > 1:
-                    dates_with_multiple_games += 1
-                
-                team_row[date] = count if count > 0 else ''
-                team_total += count
-            
-            team_row['#N/A'] = dates_with_multiple_games if dates_with_multiple_games > 0 else ''
-            team_row['nd Total'] = team_total
-            matrix_rows.append(team_row)
+        team_row['Dates with >1 Game'] = dates_with_multiple_games if dates_with_multiple_games > 0 else ''
+        team_row['Grand Total'] = team_total
+        matrix_rows.append(team_row)
     
     # Convert to DataFrame
     matrix_df = pd.DataFrame(matrix_rows)
@@ -929,7 +942,7 @@ elif page == "📅 Teams by Day":
     st.download_button(
         "📥 Download as CSV",
         csv,
-        "teams_by_day.csv",
+        f"teams_by_day_{selected_division}.csv",
         "text/csv"
     )
 
