@@ -1049,6 +1049,15 @@ elif page == "🔍 Data Query Tool":
         **Example Queries:**
         
         ```sql
+        -- List all tables in the database
+        SELECT name FROM sqlite_master WHERE type='table';
+        
+        -- Show structure of the 'games' table
+        PRAGMA table_info(games);
+        
+        -- Show structure of the 'schedule_requests' table
+        PRAGMA table_info(schedule_requests);
+        
         -- Get all games for a specific team
         SELECT * FROM games WHERE Home = 'Aliens' OR Away = 'Aliens';
         
@@ -1078,13 +1087,13 @@ elif page == "🔍 Data Query Tool":
         for keyword in dangerous_keywords:
             if keyword in query_upper:
                 is_safe = False
-                st.error(f"❌ Query blocked: '{keyword}' operations are not allowed. Only SELECT queries are permitted.")
+                st.error(f"❌ Query blocked: '{keyword}' operations are not allowed. Only SELECT and PRAGMA queries are permitted.")
                 break
         
         if is_safe:
-            # Also check it starts with SELECT
-            if not query_upper.strip().startswith('SELECT'):
-                st.error("❌ Query must start with SELECT. Only read-only queries are allowed.")
+            # Check it starts with SELECT or PRAGMA
+            if not (query_upper.strip().startswith('SELECT') or query_upper.strip().startswith('PRAGMA')):
+                st.error("❌ Query must start with SELECT or PRAGMA. Only read-only queries are allowed.")
             else:
                 try:
                     # Execute the query
