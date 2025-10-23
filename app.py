@@ -35,7 +35,6 @@ page = st.sidebar.radio(
         "📅 Full Schedule", 
         "🏟️ Field Pivot", 
         "👥 Team Schedules",
-        "📊 Division Stats",
         "📋 Team vs Date Matrix",
         "📊 Division Summary by Week",
         "✏️ Edit Game (Admin)",
@@ -367,30 +366,6 @@ elif page == "👥 Team Schedules":
         f"{selected_team}_schedule.csv",
         "text/csv"
     )
-
-elif page == "📊 Division Stats":
-    st.title("📊 Division Statistics")
-    
-    # Games per division
-    st.markdown("### Games Per Division")
-    div_counts = df.groupby('Division').size().sort_values(ascending=False)
-    st.bar_chart(div_counts)
-    
-    # Show table
-    st.dataframe(
-        pd.DataFrame({
-            'Division': div_counts.index,
-            'Total Games': div_counts.values
-        }),
-        use_container_width=True,
-        hide_index=True
-    )
-    
-    # Games per week by division
-    st.markdown("### Games Per Week by Division")
-    week_div = df.groupby(['Week', 'Division']).size().reset_index(name='Games')
-    pivot_week = week_div.pivot(index='Week', columns='Division', values='Games').fillna(0)
-    st.line_chart(pivot_week)
 
 elif page == "📋 Team vs Date Matrix":
     st.title("📋 Team vs Date Matrix")
