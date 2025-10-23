@@ -941,7 +941,7 @@ elif page == "📅 Teams by Day":
         }
         .teams-day-table th {
             background-color: #f0f2f6;
-            font-weight: 600;
+            font-weight: 400;
             position: sticky;
             top: 0;
             z-index: 10;
@@ -966,13 +966,14 @@ elif page == "📅 Teams by Day":
             border-radius: 6px;
             padding: 5px;
             position: absolute;
-            z-index: 1000;
+            z-index: 99999;
             bottom: 125%;
             left: 50%;
             margin-left: -60px;
             opacity: 0;
             transition: opacity 0.3s;
             font-size: 12px;
+            pointer-events: none;
         }
         .tooltip .tooltiptext::after {
             content: "";
