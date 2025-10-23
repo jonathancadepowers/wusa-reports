@@ -197,6 +197,37 @@ elif page == "🏟️ Field Pivot":
         use_container_width=True
     )
     
+    st.markdown("---")
+    st.markdown("### 🔍 Game Details by Time Slot")
+    st.markdown("Select a time slot to see all games scheduled:")
+    
+    # Time slot selector
+    all_times = sorted(week_df['Time'].unique())
+    selected_time = st.selectbox("Select Time Slot", all_times)
+    
+    # Filter games by selected time
+    time_games = week_df[week_df['Time'] == selected_time]
+    
+    if len(time_games) > 0:
+        st.markdown(f"**{len(time_games)} game(s) at {selected_time}:**")
+        
+        # Group by field for better display
+        for field in sorted(time_games['Field'].unique()):
+            field_games = time_games[time_games['Field'] == field]
+            
+            with st.expander(f"**{field}** - {len(field_games)} game(s)", expanded=True):
+                for _, game in field_games.iterrows():
+                    st.markdown(f"""
+                    **Game #{game['Game #']}** - {game['Division']}  
+                    🏠 {game['Home']} vs 🏃 {game['Away']}  
+                    📅 {game['Game Date']} | ⏰ {game['Time']} | 🏟️ {game['Field']}
+                    """)
+                    if game.get('Comment') and str(game.get('Comment')) != 'None' and str(game.get('Comment')).strip():
+                        st.info(f"💬 Comment: {game['Comment']}")
+                    st.markdown("---")
+    else:
+        st.info("No games scheduled for this time slot")
+    
     # Download button
     csv = pivot.to_csv()
     st.download_button(
