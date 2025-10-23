@@ -1724,11 +1724,11 @@ elif page == "🔍 Data Query Tool*":
         label_visibility="collapsed"
     )
     
-    col1, col2, col3 = st.columns([2, 3, 7])
+    col1, col2 = st.columns(2)
     with col1:
-        run_button = st.button("▶️ Run Query", type="primary", use_container_width=True)
+        run_button = st.button("▶️ Run Query", type="primary")
     with col2:
-        if st.button("📋 Example Queries", use_container_width=True):
+        if st.button("📋 Example Queries"):
             st.session_state.show_examples = not st.session_state.get('show_examples', False)
     
     # Show example queries
