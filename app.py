@@ -1595,14 +1595,26 @@ elif page == "✉️ Request Change":
             selected_division = selected_team_display.split(" - ")[0]
             selected_team = selected_team_display.split(" - ", 1)[1]
             
+            st.write(f"DEBUG: Selected team = '{selected_team}'")
+            st.write(f"DEBUG: Selected division = '{selected_division}'")
+            
         with col2:
-            # Filter games by selected team
-            team_games = df[(df['Home'] == selected_team) | (df['Away'] == selected_team)]
-            game_options = [
-                f"{row['Game Date']} - {row['Time']} - {row['Home']} vs {row['Away']}"
-                for _, row in team_games.iterrows()
-            ]
-            selected_game = st.selectbox("Game", game_options if len(game_options) > 0 else ["No games found"])
+            # Filter games by selected team (either Home or Away)
+            team_games = df[(df['Home'] == selected_team) | (df['Away'] == selected_team)].copy()
+            
+            st.write(f"DEBUG: Found {len(team_games)} games for team '{selected_team}'")
+            if len(team_games) > 0:
+                st.write(f"DEBUG: Sample game - Home: '{team_games.iloc[0]['Home']}', Away: '{team_games.iloc[0]['Away']}'")
+            
+            if len(team_games) > 0:
+                game_options = [
+                    f"{row['Game Date']} - {row['Time']} - {row['Home']} vs {row['Away']}"
+                    for _, row in team_games.iterrows()
+                ]
+                selected_game = st.selectbox("Game", game_options)
+            else:
+                st.selectbox("Game", ["No games found for this team"])
+                selected_game = None
         
         # Reason (required)
         reason = st.text_area(
@@ -1620,7 +1632,7 @@ elif page == "✉️ Request Change":
                 st.error("❌ Email address is required")
             elif "@" not in email:
                 st.error("❌ Please enter a valid email address")
-            elif not selected_game or selected_game == "No games found":
+            elif not selected_game or selected_game == "No games found for this team":
                 st.error("❌ Please select a valid game")
             elif not reason or not reason.strip():
                 st.error("❌ Please provide a reason for your request")
