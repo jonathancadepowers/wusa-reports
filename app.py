@@ -794,10 +794,22 @@ elif page == "✏️ Edit Game*":
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        search_division = st.selectbox(
-            "Division", 
-            ["All"] + sort_divisions(df['Division'].unique())
-        )
+        # Get all unique teams from both Home and Away columns
+        all_teams = set(df['Home'].dropna().tolist() + df['Away'].dropna().tolist())
+        
+        # Create team options with "Division - Team Name" format
+        team_division_map = {}
+        for team in all_teams:
+            # Find the division for this team (check both Home and Away)
+            team_games = df[(df['Home'] == team) | (df['Away'] == team)]
+            if len(team_games) > 0:
+                division = team_games.iloc[0]['Division']
+                team_division_map[team] = division
+        
+        # Create formatted team list: "Division - Team Name"
+        team_options = ["All"] + sorted([f"{team_division_map[team]} - {team}" for team in all_teams if team in team_division_map])
+        
+        search_team = st.selectbox("Team", team_options)
     with col2:
         # Start Date filter
         start_date = st.date_input(
@@ -815,8 +827,12 @@ elif page == "✏️ Edit Game*":
     
     # Filter games
     search_df = df.copy()
-    if search_division != "All":
-        search_df = search_df[search_df['Division'] == search_division]
+    
+    # Apply team filter
+    if search_team != "All":
+        # Extract just the team name from "Division - Team Name"
+        selected_team = search_team.split(" - ", 1)[1] if " - " in search_team else search_team
+        search_df = search_df[(search_df['Home'] == selected_team) | (search_df['Away'] == selected_team)]
     
     # Apply date filters if provided
     if start_date is not None:
