@@ -11,28 +11,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS to hide and style the Admin separator
-st.markdown("""
-<style>
-    /* Target the specific radio button for Admin */
-    div[data-testid="stSidebar"] div[role="radiogroup"] label:nth-of-type(7) input {
-        display: none !important;
-    }
-    div[data-testid="stSidebar"] div[role="radiogroup"] label:nth-of-type(7) {
-        pointer-events: none;
-        cursor: default;
-    }
-    div[data-testid="stSidebar"] div[role="radiogroup"] label:nth-of-type(7) div[data-testid="stMarkdownContainer"] {
-        padding-left: 0 !important;
-        font-weight: 600;
-        font-size: 0.875rem;
-        color: rgba(49, 51, 63, 0.6);
-        margin-top: 1rem;
-        margin-bottom: 0.5rem;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # Load data (cached so it's fast)
 @st.cache_data
 def load_games():
@@ -49,27 +27,34 @@ df = load_games()
 st.sidebar.title("⚾ WUSA Schedule")
 st.sidebar.markdown("**Fall 2025**")
 
-# Single radio group with all pages
-all_pages = [
+# Use a single selectbox for all pages
+all_options = [
     "📅 Full Schedule", 
     "🏟️ Field Pivot", 
     "👥 Team Schedules",
     "📋 Team vs Date Matrix",
     "📊 Division Summary by Week",
     "✉️ Request Change",
-    "Admin",  # This will be styled as a header
+    "──────────",  # Visual separator
     "✏️ Edit Game",
     "📋 View Requests"
 ]
 
-page = st.sidebar.radio(
+# Custom format to show Admin label
+def format_func(option):
+    if option == "──────────":
+        return "Admin"
+    return option
+
+page = st.sidebar.selectbox(
     "",
-    all_pages,
-    key="page_selector"
+    all_options,
+    format_func=format_func,
+    label_visibility="collapsed"
 )
 
-# If Admin is somehow selected, default to Full Schedule
-if page == "Admin":
+# If separator selected, default to Full Schedule
+if page == "──────────":
     page = "📅 Full Schedule"
 
 st.sidebar.info(f"**Total Games:** {len(df)}")
