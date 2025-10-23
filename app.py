@@ -1172,8 +1172,8 @@ elif page == "📆 Monthly Calendar":
                 # Filter games for selected date
                 date_games = df[df['Date_Parsed'].dt.date == selected_date].copy()
                 
-                # Display games
-                display_cols = ['Game #', 'Division', 'Time', 'Field', 'Home', 'Away']
+                # Display games without Game # column
+                display_cols = ['Division', 'Time', 'Field', 'Home', 'Away']
                 st.dataframe(
                     date_games[display_cols],
                     use_container_width=True,
