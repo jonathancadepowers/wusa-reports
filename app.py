@@ -4,6 +4,86 @@ import pandas as pd
 import sqlite3
 from datetime import datetime
 import pytz
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# Email configuration (you'll need to set these in Streamlit secrets)
+def send_confirmation_email(recipient_email, request_id, team, game, reason):
+    """
+    Send a confirmation email to the user who submitted a schedule change request.
+    
+    Email credentials should be stored in Streamlit secrets:
+    - SMTP_SERVER
+    - SMTP_PORT
+    - SMTP_USERNAME
+    - SMTP_PASSWORD
+    - FROM_EMAIL
+    """
+    try:
+        # Get email settings from Streamlit secrets
+        smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = st.secrets.get("SMTP_PORT", 587)
+        smtp_username = st.secrets.get("SMTP_USERNAME", "")
+        smtp_password = st.secrets.get("SMTP_PASSWORD", "")
+        from_email = st.secrets.get("FROM_EMAIL", smtp_username)
+        
+        # Skip if credentials not configured
+        if not smtp_username or not smtp_password:
+            return False, "Email credentials not configured"
+        
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f'WUSA Schedule Change Request Confirmation - #{request_id}'
+        msg['From'] = from_email
+        msg['To'] = recipient_email
+        
+        # Create HTML email body
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #2c5282;">Schedule Change Request Confirmation</h2>
+                
+                <p>Thank you for submitting your schedule change request to the WUSA Scheduling Team!</p>
+                
+                <div style="background-color: #f7fafc; border-left: 4px solid #4299e1; padding: 15px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #2c5282;">Request Details:</h3>
+                    <p><strong>Request ID:</strong> #{request_id}</p>
+                    <p><strong>Team:</strong> {team}</p>
+                    <p><strong>Game:</strong> {game}</p>
+                    <p><strong>Reason:</strong> {reason}</p>
+                </div>
+                
+                <p>Your request has been received and will be reviewed by the WUSA Scheduling Team. You will receive another email once your request has been processed.</p>
+                
+                <p style="color: #718096; font-size: 14px; margin-top: 30px;">
+                    If you have any questions, please contact the WUSA Scheduling Team.
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                
+                <p style="color: #a0aec0; font-size: 12px;">
+                    This is an automated message from the WUSA Schedule Management System.
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Attach HTML body
+        msg.attach(MIMEText(html_body, 'html'))
+        
+        # Send email
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.send_message(msg)
+        
+        return True, "Email sent successfully"
+        
+    except Exception as e:
+        return False, f"Error sending email: {str(e)}"
 
 # Page config
 st.set_page_config(
@@ -24,12 +104,12 @@ def load_games():
 
 # Database migration - add audit trail column if it doesn't exist
 def ensure_audit_trail_column():
-    """Ensure the game_audit_trail column exists in the database"""
+    """Ensure the game_audit_trail and last_updated columns exist in the database"""
     try:
         conn = sqlite3.connect('wusa_schedule.db')
         cursor = conn.cursor()
         
-        # Check if column exists
+        # Check if columns exist
         cursor.execute("PRAGMA table_info(games)")
         columns = [column[1] for column in cursor.fetchall()]
         
@@ -38,9 +118,18 @@ def ensure_audit_trail_column():
             conn.commit()
             print("Added game_audit_trail column")
         
+        if 'last_updated' not in columns:
+            cursor.execute("ALTER TABLE games ADD COLUMN last_updated INTEGER DEFAULT 0")
+            conn.commit()
+            print("Added last_updated column")
+        
+        # Drop schedule_requests table if it exists (no longer needed)
+        cursor.execute("DROP TABLE IF EXISTS schedule_requests")
+        conn.commit()
+        
         conn.close()
     except Exception as e:
-        print(f"Error ensuring audit trail column: {e}")
+        print(f"Error ensuring audit trail columns: {e}")
 
 # Run migration on app startup
 ensure_audit_trail_column()
@@ -117,9 +206,8 @@ page = st.sidebar.radio(
         "📅 Teams by Day",
         "📆 Monthly Calendar",
         "🔍 Data Query Tool",
-        "✉️ Request Change",
         "✏️ Edit Game*",
-        "📋 View Requests*"
+        "📝 Recent Changes*"
     ]
 )
 
@@ -152,32 +240,9 @@ for _, game in df.iterrows():
         # If parsing fails, assume game is in the future
         games_remaining += 1
 
-# Count pending requests from database
-try:
-    conn = sqlite3.connect('wusa_schedule.db')
-    pending_requests = pd.read_sql("SELECT COUNT(*) as count FROM schedule_requests", conn)['count'][0]
-    conn.close()
-except:
-    pending_requests = 0
-
-# Display metrics with different background colors
+# Display metrics
 st.sidebar.info(f"**Total Games:** {total_games}")
 st.sidebar.success(f"**Games Remaining:** {games_remaining}")
-
-# Custom softer orange background for Pending Requests to match other colors
-st.sidebar.markdown(f"""
-<div style="
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    background-color: #fff3cd;
-    color: #856404;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    border: 1px solid #ffeaa7;
-">
-<strong>Pending Requests:</strong> {pending_requests}
-</div>
-""", unsafe_allow_html=True)
 
 # Main content
 if page == "📅 Full Schedule":
@@ -1073,7 +1138,11 @@ elif page == "✏️ Edit Game*":
                     # Convert Game # to Python int (numpy.int64 doesn't work with SQLite)
                     game_num = int(selected_game['Game #'])
                     
-                    # Update the database - including recalculated Week and Daycode and audit trail
+                    # Get current epoch timestamp
+                    import time
+                    current_timestamp = int(time.time())
+                    
+                    # Update the database - including recalculated Week and Daycode, audit trail, and timestamp
                     update_query = """
                         UPDATE games SET
                             "Game Date" = ?,
@@ -1086,7 +1155,8 @@ elif page == "✏️ Edit Game*":
                             "Daycode" = ?,
                             "Comment" = ?,
                             "Original Date" = ?,
-                            "game_audit_trail" = ?
+                            "game_audit_trail" = ?,
+                            "last_updated" = ?
                         WHERE "Game #" = ?
                     """
                     
@@ -1102,6 +1172,7 @@ elif page == "✏️ Edit Game*":
                         new_comment,
                         new_original_date,
                         new_audit_trail,
+                        current_timestamp,
                         game_num  # Use converted int
                     ))
                     
@@ -1545,248 +1616,115 @@ elif page == "🔍 Data Query Tool":
                     st.markdown("- Make sure table and column names are correct")
                     st.markdown("- Use double quotes for column names with spaces: `\"Game Date\"`")
 
-elif page == "✉️ Request Change":
-    st.title("✉️ Request Change")
+elif page == "📝 Recent Changes*":
+    st.title("📝 Recent Changes")
     
-    st.markdown("""
-    Use this form to request changes to the schedule. Your request will be 
-    logged and reviewed by the WUSA Scheduling Team.
-    """)
+    st.markdown("*View all games that have been edited, in reverse chronological order.*")
     
-    with st.form("schedule_request_form"):
-        # Email address (required)
-        email = st.text_input(
-            "Your Email Address",
-            placeholder="your.email@example.com"
-        )
-        
-        # Game selection with Team dropdown (same as Edit Game page)
-        col1, col2 = st.columns(2)
-        with col1:
-            # Get all unique teams from both Home and Away columns
-            all_teams = set(df['Home'].dropna().tolist() + df['Away'].dropna().tolist())
-            
-            # Create team options with "Division - Team Name" format
-            team_division_map = {}
-            for team in all_teams:
-                # Find the division for this team (check both Home and Away)
-                team_games = df[(df['Home'] == team) | (df['Away'] == team)]
-                if len(team_games) > 0:
-                    division = team_games.iloc[0]['Division']
-                    team_division_map[team] = division
-            
-            # Create formatted team list: "Division - Team Name"
-            team_list = [f"{team_division_map[team]} - {team}" for team in all_teams if team in team_division_map]
-            
-            # Sort by division (numerically) then by team name
-            def sort_key(team_str):
-                division, team_name = team_str.split(" - ", 1)
-                # Extract numeric part from division (e.g., "10U" -> 10)
-                try:
-                    div_num = int(''.join(filter(str.isdigit, division)))
-                except:
-                    div_num = 999
-                return (div_num, team_name)
-            
-            team_options = sorted(team_list, key=sort_key)
-            selected_team_display = st.selectbox("Team", team_options)
-            
-            # Extract team name and division from selection
-            selected_division = selected_team_display.split(" - ")[0]
-            selected_team = selected_team_display.split(" - ", 1)[1]
-            
-            st.write(f"DEBUG: Selected team = '{selected_team}'")
-            st.write(f"DEBUG: Selected division = '{selected_division}'")
-            
-        with col2:
-            # Filter games by selected team (either Home or Away)
-            team_games = df[(df['Home'] == selected_team) | (df['Away'] == selected_team)].copy()
-            
-            st.write(f"DEBUG: Found {len(team_games)} games for team '{selected_team}'")
-            if len(team_games) > 0:
-                st.write(f"DEBUG: Sample game - Home: '{team_games.iloc[0]['Home']}', Away: '{team_games.iloc[0]['Away']}'")
-            
-            if len(team_games) > 0:
-                game_options = [
-                    f"{row['Game Date']} - {row['Time']} - {row['Home']} vs {row['Away']}"
-                    for _, row in team_games.iterrows()
-                ]
-                selected_game = st.selectbox("Game", game_options)
-            else:
-                st.selectbox("Game", ["No games found for this team"])
-                selected_game = None
-        
-        # Reason (required)
-        reason = st.text_area(
-            "Reason for Request",
-            placeholder="Explain the reason for your change. Once submitted, the WUSA Scheduling Team will review it. You'll be emailed with an update when one is available.",
-            height=150
-        )
-        
-        # Submit button
-        submitted = st.form_submit_button("Submit Request", type="primary")
-        
-        if submitted:
-            # Validation - all fields required
-            if not email or not email.strip():
-                st.error("❌ Email address is required")
-            elif "@" not in email:
-                st.error("❌ Please enter a valid email address")
-            elif not selected_game or selected_game == "No games found for this team":
-                st.error("❌ Please select a valid game")
-            elif not reason or not reason.strip():
-                st.error("❌ Please provide a reason for your request")
-            else:
-                # Save to database
-                conn = sqlite3.connect('wusa_schedule.db')
-                cursor = conn.cursor()
-                
-                # Create requests table if it doesn't exist (without request_type column)
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS schedule_requests (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        email TEXT NOT NULL,
-                        team TEXT,
-                        division TEXT,
-                        game_details TEXT,
-                        reason TEXT NOT NULL,
-                        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        status TEXT DEFAULT 'Pending'
-                    )
-                ''')
-                
-                # Insert the request
-                cursor.execute('''
-                    INSERT INTO schedule_requests 
-                    (email, team, division, game_details, reason)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (email, selected_team, selected_division, selected_game, reason))
-                
-                conn.commit()
-                request_id = cursor.lastrowid
-                conn.close()
-                
-                st.success(f"✅ Request #{request_id} submitted successfully!")
-                st.info(f"📧 Confirmation will be sent to {email}")
-                
-                # Show what was submitted
-                with st.expander("View Submitted Request"):
-                    st.write(f"**Request ID:** {request_id}")
-                    st.write(f"**Email:** {email}")
-                    st.write(f"**Team:** {selected_team_display}")
-                    st.write(f"**Game:** {selected_game}")
-                    st.write(f"**Reason:** {reason}")
-
-elif page == "📋 View Requests*":
-    st.title("📋 Schedule Change Requests")
-    
-    # Load requests from database
+    # Get games that have been edited (last_updated > 0)
     conn = sqlite3.connect('wusa_schedule.db')
     
-    # Check if table exists
+    # Check if last_updated column exists
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT name FROM sqlite_master 
-        WHERE type='table' AND name='schedule_requests'
-    """)
-    table_exists = cursor.fetchone() is not None
+    cursor.execute("PRAGMA table_info(games)")
+    columns = [column[1] for column in cursor.fetchall()]
     
-    if not table_exists:
-        st.info("No requests submitted yet. The requests table will be created when the first request is submitted.")
+    if 'last_updated' not in columns:
+        st.info("No changes tracked yet. The change tracking system will start working after the next game edit.")
         conn.close()
     else:
-        # Try to get data - handle if request_type column exists or not
-        try:
-            requests_df = pd.read_sql("""
-                SELECT 
-                    id,
-                    email,
-                    team,
-                    division,
-                    game_details,
-                    reason,
-                    submitted_at,
-                    status
-                FROM schedule_requests
-                ORDER BY submitted_at DESC
-            """, conn)
-        except:
-            # Fallback for old schema with request_type
-            requests_df = pd.read_sql("""
-                SELECT 
-                    id,
-                    email,
-                    division,
-                    game_details,
-                    request_type,
-                    reason,
-                    submitted_at,
-                    status
-                FROM schedule_requests
-                ORDER BY submitted_at DESC
-            """, conn)
-        
+        # Load games with last_updated > 0, ordered by last_updated DESC
+        edited_games_df = pd.read_sql("""
+            SELECT * FROM games 
+            WHERE last_updated > 0 
+            ORDER BY last_updated DESC
+        """, conn)
         conn.close()
         
-        if len(requests_df) == 0:
-            st.info("No requests submitted yet")
+        if len(edited_games_df) == 0:
+            st.info("No games have been edited yet.")
         else:
-            # Filter by status
-            status_filter = st.multiselect(
-                "Filter by Status",
-                ["Pending", "Approved", "Denied"],
-                default=["Pending"]
-            )
+            # Two column layout
+            col_left, col_right = st.columns([1, 2])
             
-            filtered_requests = requests_df[requests_df['status'].isin(status_filter)]
+            with col_left:
+                st.markdown("### Modified Games")
+                st.markdown(f"*{len(edited_games_df)} games edited*")
+                
+                # Create game selection list
+                game_options = []
+                for _, row in edited_games_df.iterrows():
+                    # Format: "8U - Wednesday, September 24, 2025 - 7:15 PM - Blizzard vs Thunder"
+                    # Then on next line: "2025-09-24"
+                    game_display = f"{row['Division']} - {row['Game Date']} - {row['Time']} - {row['Home']} vs {row['Away']}"
+                    
+                    # Convert timestamp to date
+                    from datetime import datetime
+                    last_updated_date = datetime.fromtimestamp(row['last_updated']).strftime('%Y-%m-%d')
+                    
+                    game_options.append({
+                        'display': game_display,
+                        'date': last_updated_date,
+                        'game_num': row['Game #']
+                    })
+                
+                # Use radio buttons for selection
+                selected_game_idx = st.radio(
+                    "Select a game to view its change history:",
+                    range(len(game_options)),
+                    format_func=lambda i: f"{game_options[i]['display']}\n📅 Last edited: {game_options[i]['date']}",
+                    label_visibility="collapsed"
+                )
+                
+                selected_game_num = game_options[selected_game_idx]['game_num']
             
-            # Display count
-            st.metric("Total Requests", len(filtered_requests))
-            
-            # Determine which columns to show
-            if 'team' in filtered_requests.columns:
-                column_config = {
-                    "id": "ID",
-                    "email": "Email",
-                    "team": "Team",
-                    "division": "Division",
-                    "game_details": "Game",
-                    "reason": st.column_config.TextColumn("Reason", width="large"),
-                    "submitted_at": st.column_config.DatetimeColumn(
-                        "Submitted", 
-                        format="MMM D, YYYY h:mm A"
-                    ),
-                    "status": "Status"
-                }
-            else:
-                # Old schema compatibility
-                column_config = {
-                    "id": "ID",
-                    "email": "Email",
-                    "division": "Division",
-                    "game_details": "Game",
-                    "request_type": "Type",
-                    "reason": st.column_config.TextColumn("Reason", width="large"),
-                    "submitted_at": st.column_config.DatetimeColumn(
-                        "Submitted", 
-                        format="MMM D, YYYY h:mm A"
-                    ),
-                    "status": "Status"
-                }
-            
-            # Display requests
-            st.dataframe(
-                filtered_requests,
-                use_container_width=True,
-                hide_index=True,
-                column_config=column_config
-            )
-            
-            # Download button
-            csv = filtered_requests.to_csv(index=False)
-            st.download_button(
-                "📥 Download as CSV",
-                csv,
-                "schedule_requests.csv",
-                "text/csv"
-            )
+            with col_right:
+                st.markdown("### Change History")
+                
+                # Get the audit trail for the selected game
+                conn = sqlite3.connect('wusa_schedule.db')
+                cursor = conn.cursor()
+                cursor.execute("SELECT game_audit_trail FROM games WHERE \"Game #\" = ?", (int(selected_game_num),))
+                result = cursor.fetchone()
+                conn.close()
+                
+                if result and result[0]:
+                    audit_trail = result[0]
+                    
+                    if audit_trail and str(audit_trail).strip():
+                        import json
+                        
+                        audit_lines = str(audit_trail).strip().split('\n')
+                        audit_data = []
+                        
+                        for line in audit_lines:
+                            if line.strip():
+                                try:
+                                    entry = json.loads(line)
+                                    audit_data.append(entry)
+                                except:
+                                    pass
+                        
+                        if audit_data:
+                            # Display as a table
+                            audit_df = pd.DataFrame(audit_data)
+                            # Reverse order to show most recent first
+                            audit_df = audit_df.iloc[::-1].reset_index(drop=True)
+                            
+                            st.dataframe(
+                                audit_df[['timestamp', 'field', 'old_value', 'new_value']],
+                                use_container_width=True,
+                                hide_index=True,
+                                column_config={
+                                    'timestamp': 'Date/Time',
+                                    'field': 'Field Changed',
+                                    'old_value': 'Old Value',
+                                    'new_value': 'New Value'
+                                }
+                            )
+                        else:
+                            st.info("No detailed change history available for this game.")
+                    else:
+                        st.info("No detailed change history available for this game.")
+                else:
+                    st.info("No detailed change history available for this game.")
