@@ -1048,13 +1048,48 @@ elif page == "📆 Monthly Calendar":
         # Display month header
         st.markdown(f"### {month_name} {selected_year}")
         
+        # Add custom CSS for calendar styling
+        st.markdown("""
+        <style>
+            /* Calendar cell borders and spacing */
+            div[data-testid="column"] {
+                border: 1px solid #ddd;
+                padding: 0.5rem;
+                min-height: 100px;
+            }
+            
+            /* Style for day buttons */
+            .stButton button {
+                width: 100%;
+                height: 100%;
+                min-height: 80px;
+                position: relative;
+            }
+            
+            /* Game count badge */
+            .game-badge {
+                background-color: #000;
+                color: white;
+                border-radius: 50%;
+                width: 32px;
+                height: 32px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;
+                font-size: 14px;
+                margin-top: 8px;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
         # Create calendar using Streamlit columns
         # Header row
         day_names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
         header_cols = st.columns(7)
         for idx, day_name in enumerate(day_names):
             with header_cols[idx]:
-                st.markdown(f"**{day_name}**")
+                st.markdown(f"<div style='text-align: center; font-weight: 600; padding: 0.5rem; border: 1px solid #ddd; background-color: #f0f2f6;'>{day_name}</div>", unsafe_allow_html=True)
         
         # Calendar rows
         for week in cal:
@@ -1063,16 +1098,23 @@ elif page == "📆 Monthly Calendar":
                 with week_cols[idx]:
                     if day == 0:
                         # Empty day
-                        st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
+                        st.markdown("<div style='height: 100px; border: 1px solid #ddd; background-color: #f8f9fa;'></div>", unsafe_allow_html=True)
                     else:
                         date_obj = datetime(selected_year, selected_month, day).date()
                         game_count = date_counts.get(date_obj, 0)
                         
                         if game_count > 0:
                             # Create a button for days with games
-                            button_label = f"**{day}**\n\n🎮 {game_count}"
+                            # Use HTML for better formatting
+                            button_html = f"""
+                            <div style='text-align: center; font-size: 18px; font-weight: 600;'>{day}</div>
+                            <div style='text-align: center;'>
+                                <div class='game-badge'>{game_count}</div>
+                            </div>
+                            """
+                            
                             if st.button(
-                                button_label,
+                                f"{day}\n\n{game_count}",
                                 key=f"cal_{date_obj}",
                                 use_container_width=True,
                                 type="primary" if st.session_state.get('selected_calendar_date') == date_obj else "secondary"
@@ -1081,7 +1123,7 @@ elif page == "📆 Monthly Calendar":
                                 st.rerun()
                         else:
                             # Just show the day number for days without games
-                            st.markdown(f"<div style='text-align: center; padding: 1rem; color: #999;'>{day}</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='text-align: center; padding: 2rem; color: #999; font-size: 18px; font-weight: 600; border: 1px solid #ddd; min-height: 100px;'>{day}</div>", unsafe_allow_html=True)
         
         st.markdown("---")
         
