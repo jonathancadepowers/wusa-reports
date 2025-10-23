@@ -45,7 +45,7 @@ st.sidebar.info(f"**Total Games:** {len(df)}")
 if page == "📅 Full Schedule":
     st.title("📅 Full Schedule")
     
-    # Filters
+    # Filters - now in 2 rows
     col1, col2, col3 = st.columns(3)
     with col1:
         selected_divisions = st.multiselect(
@@ -62,13 +62,31 @@ if page == "📅 Full Schedule":
     with col3:
         selected_fields = st.multiselect("Field", sorted(df['Field'].unique()))
     
+    # Second row for team filter
+    col4, col5, col6 = st.columns(3)
+    with col4:
+        # Get all unique teams (both home and away), filtering out NaN values
+        home_teams = df['Home'].dropna().unique()
+        away_teams = df['Away'].dropna().unique()
+        all_teams = sorted(set(list(home_teams) + list(away_teams)))
+        
+        selected_teams = st.multiselect("Team (Home or Away)", all_teams)
+    
     # Filter data
     filtered_df = df[
         df['Division'].isin(selected_divisions) & 
         df['Week'].isin(selected_weeks)
     ]
+    
     if selected_fields:
         filtered_df = filtered_df[filtered_df['Field'].isin(selected_fields)]
+    
+    if selected_teams:
+        # Filter to games where the selected team is either home or away
+        filtered_df = filtered_df[
+            filtered_df['Home'].isin(selected_teams) | 
+            filtered_df['Away'].isin(selected_teams)
+        ]
     
     # Display
     st.dataframe(
@@ -204,7 +222,7 @@ elif page == "✉️ Request Schedule Change":
         # Email address (required)
         email = st.text_input(
             "Your Email Address *",
-            placeholder="jpowers@gmail.com",
+            placeholder="your.email@example.com",
             help="We'll use this to follow up on your request"
         )
         
