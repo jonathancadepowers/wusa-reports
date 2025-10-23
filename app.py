@@ -121,9 +121,9 @@ elif page == "🏟️ Field Pivot":
 elif page == "👥 Team Schedules":
     st.title("👥 Team Schedules")
     
-    # Get all unique teams (both home and away)
-    home_teams = df['Home'].unique()
-    away_teams = df['Away'].unique()
+    # Get all unique teams (both home and away), filtering out NaN values
+    home_teams = df['Home'].dropna().unique()
+    away_teams = df['Away'].dropna().unique()
     all_teams = sorted(set(list(home_teams) + list(away_teams)))
     
     # Team selector
@@ -204,7 +204,7 @@ elif page == "✉️ Request Schedule Change":
         # Email address (required)
         email = st.text_input(
             "Your Email Address *",
-            placeholder="your.email@example.com",
+            placeholder="jpowers@gmail.com",
             help="We'll use this to follow up on your request"
         )
         
