@@ -31,8 +31,9 @@ page = st.sidebar.radio(
     [
         "📅 Full Schedule", 
         "🏟️ Field Pivot", 
-        "👥 Team Schedules", 
+        "👥 Team Schedules",
         "📊 Division Stats",
+        "📋 Team vs Date Matrix",
         "✉️ Request Schedule Change",
         "📋 View Requests"
     ]
@@ -209,6 +210,72 @@ elif page == "📊 Division Stats":
     week_div = df.groupby(['Week', 'Division']).size().reset_index(name='Games')
     pivot_week = week_div.pivot(index='Week', columns='Division', values='Games').fillna(0)
     st.line_chart(pivot_week)
+
+elif page == "📋 Team vs Date Matrix":
+    st.title("📋 Team vs Date Matrix")
+    
+    st.markdown("""
+    This view shows how many games each team plays on each date.
+    Similar to the matrix in your Google Sheet.
+    """)
+    
+    # Division filter
+    selected_division = st.selectbox(
+        "Select Division", 
+        sorted(df['Division'].unique())
+    )
+    
+    # Filter by division
+    division_df = df[df['Division'] == selected_division].copy()
+    
+    # Get all teams for this division
+    home_teams = division_df['Home'].dropna().unique()
+    away_teams = division_df['Away'].dropna().unique()
+    all_teams = sorted(set(list(home_teams) + list(away_teams)))
+    
+    # Create a list to hold team game counts per date
+    matrix_data = []
+    
+    for team in all_teams:
+        team_row = {'Team': team}
+        
+        # For each unique date, count games
+        for date in sorted(division_df['Game Date'].unique()):
+            games_on_date = division_df[
+                ((division_df['Home'] == team) | (division_df['Away'] == team)) &
+                (division_df['Game Date'] == date)
+            ]
+            count = len(games_on_date)
+            team_row[date] = count if count > 0 else ''
+        
+        # Add total games column
+        team_total = len(division_df[
+            (division_df['Home'] == team) | (division_df['Away'] == team)
+        ])
+        team_row['Total Games'] = team_total
+        
+        matrix_data.append(team_row)
+    
+    # Convert to DataFrame
+    matrix_df = pd.DataFrame(matrix_data)
+    
+    # Set Team as index
+    matrix_df = matrix_df.set_index('Team')
+    
+    # Display the matrix
+    st.dataframe(
+        matrix_df,
+        use_container_width=True
+    )
+    
+    # Download button
+    csv = matrix_df.to_csv()
+    st.download_button(
+        "📥 Download as CSV",
+        csv,
+        f"team_date_matrix_{selected_division}.csv",
+        "text/csv"
+    )
 
 elif page == "✉️ Request Schedule Change":
     st.title("✉️ Request Schedule Change")
