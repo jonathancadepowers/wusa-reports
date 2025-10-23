@@ -30,7 +30,7 @@ st.sidebar.markdown("---")
 
 # Page selection
 page = st.sidebar.radio(
-    "Select Report:",
+    "",
     [
         "📅 Full Schedule", 
         "🏟️ Field Pivot", 
@@ -176,7 +176,7 @@ elif page == "🏟️ Field Pivot":
     # Filters in columns
     col1, col2, col3 = st.columns(3)
     with col1:
-        selected_week = st.selectbox("Select Week", sorted(df['Week'].unique()))
+        selected_week = st.selectbox("Week", sorted(df['Week'].unique()))
     with col2:
         # Get min and max dates from the schedule
         min_date = df['Game Date Parsed'].min().date()
@@ -435,7 +435,7 @@ elif page == "📋 Team vs Date Matrix":
     
     # Division filter
     selected_division = st.selectbox(
-        "Select Division", 
+        "Division", 
         sorted(df['Division'].unique())
     )
     
@@ -635,7 +635,7 @@ elif page == "✏️ Edit Game (Admin)":
     if len(game_options) == 0:
         st.info("No games found with selected filters")
     else:
-        selected_game_display = st.selectbox("Select Game to Edit", game_options)
+        selected_game_display = st.selectbox("Game to Edit", game_options)
         selected_idx = game_indices[game_options.index(selected_game_display)]
         selected_game = df.loc[selected_idx]
         
@@ -826,7 +826,7 @@ elif page == "✉️ Request Change":
                 f"{row['Game Date']} - {row['Time']} - {row['Home']} vs {row['Away']}"
                 for _, row in division_games.iterrows()
             ]
-            selected_game = st.selectbox("Select Game", game_options)
+            selected_game = st.selectbox("Game", game_options)
         
         # Request type
         request_type = st.selectbox(
