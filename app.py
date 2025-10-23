@@ -932,13 +932,47 @@ elif page == "✏️ Edit Game*":
     if len(game_options) == 0:
         st.info("No games found with selected filters")
     else:
-        selected_game_display = st.selectbox("Game to Edit", game_options)
+        # Check if we just saved and should preserve selection
+        if 'saved_game_number' in st.session_state and st.session_state.saved_game_number:
+            # Find the game in the current search results
+            saved_game_num = st.session_state.saved_game_number
+            
+            # Try to find this game in current results
+            matching_games = search_df[search_df['Game #'] == saved_game_num]
+            if len(matching_games) > 0:
+                # Find index in game_options
+                for i, idx in enumerate(game_indices):
+                    if df.loc[idx]['Game #'] == saved_game_num:
+                        default_index = i
+                        break
+                else:
+                    default_index = 0
+            else:
+                default_index = 0
+            
+            # Clear the saved game number after using it
+            st.session_state.saved_game_number = None
+        else:
+            default_index = 0
+        
+        selected_game_display = st.selectbox("Game to Edit", game_options, index=default_index)
         
         # Display filtered games count after dropdown
         st.markdown(f"*Found {len(search_df)} games*")
         
         selected_idx = game_indices[game_options.index(selected_game_display)]
-        selected_game = df.loc[selected_idx]
+        
+        # Reload game data from database to get latest values (in case it was just edited)
+        conn = sqlite3.connect('wusa_schedule.db')
+        game_num = int(df.loc[selected_idx]['Game #'])
+        current_game_df = pd.read_sql(f"SELECT * FROM games WHERE \"Game #\" = {game_num}", conn)
+        conn.close()
+        
+        if len(current_game_df) > 0:
+            selected_game = current_game_df.iloc[0]
+        else:
+            # Fallback to cached data if database read fails
+            selected_game = df.loc[selected_idx]
         
         st.markdown("---")
         st.markdown("### Step 2: Edit Game")
