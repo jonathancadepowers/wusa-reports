@@ -176,7 +176,7 @@ elif page == "🏟️ Field Pivot":
     # Filters in columns
     col1, col2, col3 = st.columns(3)
     with col1:
-        selected_week = st.selectbox("Select Week", sorted(df['Week'].unique()))
+        selected_week = st.selectbox("Week", sorted(df['Week'].unique()))
     with col2:
         # Get min and max dates from the schedule
         min_date = df['Game Date Parsed'].min().date()
@@ -376,7 +376,7 @@ elif page == "👥 Team Schedules":
         st.metric("Away Games", away_games)
     
     # Display schedule (drop the parsed date column)
-    display_cols = ['Week', 'Game Date', 'Time', 'Field', 'Home', 'Away', 'Home/Away']
+    display_cols = ['Week', 'Game Date', 'Time', 'Field', 'Home', 'Away']
     st.dataframe(
         team_games[display_cols],
         use_container_width=True,
