@@ -428,11 +428,6 @@ elif page == "👥 Team Schedules":
 elif page == "📋 Team vs Date Matrix":
     st.title("📋 Team vs Date Matrix")
     
-    st.markdown("""
-    This view shows how many games each team plays on each date.
-    Similar to the matrix in your Google Sheet.
-    """)
-    
     # Division filter
     selected_division = st.selectbox(
         "Division", 
