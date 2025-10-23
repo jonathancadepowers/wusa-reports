@@ -1637,10 +1637,10 @@ elif page == "📝 Recent Changes*":
         st.info("No changes tracked yet. The change tracking system will start working after the next game edit.")
         conn.close()
     else:
-        # Load games with last_updated > 0, ordered by last_updated DESC
+        # Load games with audit trails
         edited_games_df = pd.read_sql("""
             SELECT * FROM games 
-            WHERE last_updated > 0 
+            WHERE game_audit_trail IS NOT NULL AND game_audit_trail != ''
             ORDER BY last_updated DESC
         """, conn)
         conn.close()
@@ -1648,115 +1648,55 @@ elif page == "📝 Recent Changes*":
         if len(edited_games_df) == 0:
             st.info("No games have been edited yet.")
         else:
-            # Two column layout
-            col_left, col_right = st.columns([1, 2])
+            # Parse all audit entries from all games
+            import json
+            all_changes = []
             
-            with col_left:
-                # Add gray background styling
-                st.markdown("""
-                <style>
-                .left-column {
-                    background-color: #f8f9fa;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                }
-                </style>
-                """, unsafe_allow_html=True)
+            for _, game in edited_games_df.iterrows():
+                audit_trail = game['game_audit_trail']
                 
-                st.markdown("### Recently Modified Games")
-                st.markdown(f"*{len(edited_games_df)} games edited*")
-                
-                # Create table data
-                table_data = []
-                for idx, row in edited_games_df.iterrows():
-                    # Format: "8U - Wednesday, September 24, 2025 - 7:15 PM - Blizzard vs Thunder"
-                    game_display = f"{row['Division']} - {row['Game Date']} - {row['Time']} - {row['Home']} vs {row['Away']}"
+                if audit_trail and str(audit_trail).strip():
+                    audit_lines = str(audit_trail).strip().split('\n')
                     
-                    # Convert timestamp to date
-                    from datetime import datetime
-                    last_updated_date = datetime.fromtimestamp(row['last_updated']).strftime('%Y-%m-%d')
-                    
-                    table_data.append({
-                        'Game': game_display,
-                        'Last Update': last_updated_date,
-                        'game_num': row['Game #']
-                    })
+                    for line in audit_lines:
+                        if line.strip():
+                            try:
+                                entry = json.loads(line)
+                                # Add game context to each change
+                                game_display = f"{game['Division']} - {game['Game Date']} - {game['Time']} - {game['Home']} vs {game['Away']}"
+                                
+                                all_changes.append({
+                                    'Last Updated': entry['timestamp'],
+                                    'Game': game_display,
+                                    'Field Changed': entry['field'],
+                                    'Old Value': entry['old_value'],
+                                    'New Value': entry['new_value']
+                                })
+                            except:
+                                pass
+            
+            if len(all_changes) == 0:
+                st.info("No detailed change history available.")
+            else:
+                # Convert to DataFrame and sort by timestamp (most recent first)
+                changes_df = pd.DataFrame(all_changes)
                 
-                # Display as table
-                display_df = pd.DataFrame(table_data)
+                # Sort by timestamp descending (most recent first)
+                changes_df = changes_df.sort_values('Last Updated', ascending=False).reset_index(drop=True)
                 
-                # Use dataframe with clickable selection
-                st.markdown('<div class="left-column">', unsafe_allow_html=True)
+                st.markdown(f"*Showing {len(all_changes)} changes across {len(edited_games_df)} games*")
                 
-                # Show table
+                # Display the table
                 st.dataframe(
-                    display_df[['Game', 'Last Update']],
+                    changes_df,
                     use_container_width=True,
                     hide_index=True,
-                    height=400
+                    column_config={
+                        'Last Updated': st.column_config.TextColumn('Last Updated', width='medium'),
+                        'Game': st.column_config.TextColumn('Game', width='large'),
+                        'Field Changed': st.column_config.TextColumn('Field Changed', width='medium'),
+                        'Old Value': st.column_config.TextColumn('Old Value', width='medium'),
+                        'New Value': st.column_config.TextColumn('New Value', width='medium')
+                    },
+                    height=600
                 )
-                
-                # Selection input
-                game_numbers = [item['game_num'] for item in table_data]
-                game_labels = [f"Game #{item['game_num']}" for item in table_data]
-                
-                selected_idx = st.selectbox(
-                    "Select game to view history:",
-                    range(len(game_labels)),
-                    format_func=lambda i: game_labels[i]
-                )
-                
-                selected_game_num = game_numbers[selected_idx]
-                
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            with col_right:
-                st.markdown("### Selected Game's Change History")
-                
-                # Get the audit trail for the selected game
-                conn = sqlite3.connect('wusa_schedule.db')
-                cursor = conn.cursor()
-                cursor.execute("SELECT game_audit_trail FROM games WHERE \"Game #\" = ?", (int(selected_game_num),))
-                result = cursor.fetchone()
-                conn.close()
-                
-                if result and result[0]:
-                    audit_trail = result[0]
-                    
-                    if audit_trail and str(audit_trail).strip():
-                        import json
-                        
-                        audit_lines = str(audit_trail).strip().split('\n')
-                        audit_data = []
-                        
-                        for line in audit_lines:
-                            if line.strip():
-                                try:
-                                    entry = json.loads(line)
-                                    audit_data.append(entry)
-                                except:
-                                    pass
-                        
-                        if audit_data:
-                            # Display as a table
-                            audit_df = pd.DataFrame(audit_data)
-                            # Reverse order to show most recent first
-                            audit_df = audit_df.iloc[::-1].reset_index(drop=True)
-                            
-                            st.dataframe(
-                                audit_df[['timestamp', 'field', 'old_value', 'new_value']],
-                                use_container_width=True,
-                                hide_index=True,
-                                column_config={
-                                    'timestamp': 'Updated',
-                                    'field': 'Field Changed',
-                                    'old_value': 'Old Value',
-                                    'new_value': 'New Value'
-                                }
-                            )
-                        else:
-                            st.info("No detailed change history available for this game.")
-                    else:
-                        st.info("No detailed change history available for this game.")
-                else:
-                    st.info("No detailed change history available for this game.")
