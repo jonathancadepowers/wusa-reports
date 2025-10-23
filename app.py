@@ -29,6 +29,31 @@ def sort_divisions(divisions):
             # Extract numeric part from division (e.g., "10U" -> 10)
             return int(''.join(filter(str.isdigit, str(div))))
         except:
+            return 0
+    return sorted(divisions, key=get_numeric_value)
+
+# Helper function to calculate Week and Daycode from Game Date
+def calculate_week_and_daycode(game_date_str):
+    """
+    Calculate Week number and Daycode from a game date string.
+    Returns tuple: (week_number, daycode)
+    """
+    try:
+        # Parse the date
+        date_obj = pd.to_datetime(game_date_str)
+        
+        # Calculate week number (week of year)
+        week_number = date_obj.isocalendar()[1]
+        
+        # Calculate daycode (day of week: 1=Monday, 7=Sunday)
+        # Adjust to match your convention if different
+        daycode = date_obj.isocalendar()[2]  # ISO weekday: 1=Mon, 7=Sun
+        
+        return week_number, daycode
+    except:
+        # If parsing fails, return defaults
+        return 0, 0
+        except:
             return 999  # Put non-numeric divisions at the end
     return sorted(divisions, key=get_numeric_value)
 
@@ -785,6 +810,8 @@ elif page == "✏️ Edit Game*":
         st.markdown("---")
         st.markdown("### Step 2: Edit Game")
         
+        st.markdown("*💡 Tip: Week and Daycode are automatically recalculated based on the Game Date you select.*")
+        
         # Get all unique values for dropdowns
         all_fields = sorted(df['Field'].unique())
         all_times = sorted(df['Time'].unique())
@@ -850,8 +877,8 @@ elif page == "✏️ Edit Game*":
             with col3:
                 # Read-only fields (displayed but not editable)
                 st.text_input("Division", value=str(selected_game['Division']), disabled=True)
-                st.text_input("Week", value=str(selected_game['Week']), disabled=True)
-                st.text_input("Daycode", value=str(selected_game['Daycode']), disabled=True)
+                st.text_input("Week", value=str(selected_game['Week']), disabled=True, help="Auto-calculated from Game Date")
+                st.text_input("Daycode", value=str(selected_game['Daycode']), disabled=True, help="Auto-calculated from Game Date")
             
             # Additional fields if they exist
             col4, col5, col6 = st.columns(3)
@@ -868,12 +895,14 @@ elif page == "✏️ Edit Game*":
                 cancel = st.form_submit_button("❌ Cancel")
             
             if submitted:
-                # Update the database - only update editable fields
+                # Recalculate Week and Daycode based on new game date
+                new_week, new_daycode = calculate_week_and_daycode(new_game_date)
+                
+                # Update the database - including recalculated Week and Daycode
                 conn = sqlite3.connect('wusa_schedule.db')
                 cursor = conn.cursor()
                 
-                # Build update query - excluding read-only fields (Division, Week, Daycode)
-                # and removed fields (Game #, Game, Div)
+                # Build update query - now includes Week and Daycode which are auto-calculated
                 update_query = """
                     UPDATE games SET
                         "Game Date" = ?,
@@ -882,6 +911,8 @@ elif page == "✏️ Edit Game*":
                         "Home" = ?,
                         "Away" = ?,
                         "Status" = ?,
+                        "Week" = ?,
+                        "Daycode" = ?,
                         "Comment" = ?,
                         "Original Date" = ?
                     WHERE "Game #" = ?
@@ -894,6 +925,8 @@ elif page == "✏️ Edit Game*":
                     new_home,
                     new_away,
                     new_status,
+                    new_week,
+                    new_daycode,
                     new_comment,
                     new_original_date,
                     selected_game['Game #']  # Use original Game # as identifier
