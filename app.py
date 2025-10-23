@@ -91,15 +91,49 @@ if page == "📅 Full Schedule":
             filtered_df['Away'].isin(selected_teams)
         ]
     
-    # Display
-    st.dataframe(
+    # Display with editable Comment column
+    st.markdown("💡 **Tip:** You can edit the Comment column directly - changes are saved automatically!")
+    
+    edited_df = st.data_editor(
         filtered_df,
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
+        disabled=[col for col in filtered_df.columns if col != 'Comment'],  # Only Comment is editable
+        key="schedule_editor"
     )
     
+    # Check if any comments were edited
+    if not edited_df.equals(filtered_df):
+        # Find rows where Comment changed
+        changed_rows = edited_df[edited_df['Comment'] != filtered_df['Comment']]
+        
+        if len(changed_rows) > 0:
+            # Update database for each changed row
+            conn = sqlite3.connect('wusa_schedule.db')
+            cursor = conn.cursor()
+            
+            for idx, row in changed_rows.iterrows():
+                cursor.execute(
+                    'UPDATE games SET "Comment" = ? WHERE "Game #" = ?',
+                    (row['Comment'], row['Game #'])
+                )
+            
+            conn.commit()
+            conn.close()
+            
+            # Clear cache to reload data
+            st.cache_data.clear()
+            
+            # Show success message
+            st.success(f"✅ Updated {len(changed_rows)} comment(s) automatically!")
+            
+            # Small delay to show message, then rerun
+            import time
+            time.sleep(1)
+            st.rerun()
+    
     # Download button
-    csv = filtered_df.to_csv(index=False)
+    csv = edited_df.to_csv(index=False)
     st.download_button(
         "📥 Download as CSV",
         csv,
