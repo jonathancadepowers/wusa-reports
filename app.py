@@ -1104,6 +1104,10 @@ elif page == "✏️ Edit Game*":
                 # Clear cache to reload data
                 st.cache_data.clear()
                 
+                # Set a flag to indicate we just saved
+                st.session_state.just_saved = True
+                st.session_state.saved_game_number = selected_game['Game #']
+                
                 if audit_entries:
                     st.success(f"✅ Game #{selected_game['Game #']} updated successfully! Tracked {len(audit_entries)} change(s).")
                 else:
@@ -1113,13 +1117,16 @@ elif page == "✏️ Edit Game*":
         st.markdown("---")
         st.markdown("### 📜 Game's Change History")
         
-        # Reload the game data to get latest audit trail
+        # Always get fresh data from database (not cached) to show latest changes
         conn = sqlite3.connect('wusa_schedule.db')
-        current_game = pd.read_sql(f"SELECT * FROM games WHERE \"Game #\" = {selected_game['Game #']}", conn)
+        # Use a direct query without caching
+        cursor = conn.cursor()
+        cursor.execute("SELECT game_audit_trail FROM games WHERE \"Game #\" = ?", (selected_game['Game #'],))
+        result = cursor.fetchone()
         conn.close()
         
-        if len(current_game) > 0 and 'game_audit_trail' in current_game.columns:
-            audit_trail = current_game.iloc[0]['game_audit_trail']
+        if result and result[0]:
+            audit_trail = result[0]
             
             if audit_trail and str(audit_trail).strip():
                 import json
