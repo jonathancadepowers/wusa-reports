@@ -38,7 +38,7 @@ page = st.sidebar.radio(
         "📋 Team vs Date Matrix",
         "📊 Division Summary by Week",
         "✏️ Edit Game (Admin)",
-        "✉️ Request Schedule Change",
+        "✉️ Request Change",
         "📋 View Requests"
     ]
 )
@@ -741,8 +741,8 @@ elif page == "✏️ Edit Game (Admin)":
                 st.info("🔄 Page will reload with updated data...")
                 st.rerun()
 
-elif page == "✉️ Request Schedule Change":
-    st.title("✉️ Request Schedule Change")
+elif page == "✉️ Request Change":
+    st.title("✉️ Request Change")
     
     st.markdown("""
     Use this form to request changes to the schedule. Your request will be 
