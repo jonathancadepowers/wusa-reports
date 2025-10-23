@@ -189,7 +189,7 @@ elif page == "🏟️ Field Pivot":
         key = (row['Time'], row['Field'])
         if key not in game_details:
             game_details[key] = []
-        game_info = f"Game #{row['Game #']}: {row['Home']} vs {row['Away']}"
+        game_info = f"{row['Home']} vs {row['Away']}"
         game_details[key].append(game_info)
     
     # Create pivot table
