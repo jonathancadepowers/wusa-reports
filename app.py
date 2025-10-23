@@ -1164,8 +1164,9 @@ elif page == "📆 Monthly Calendar":
         import streamlit.components.v1 as components
         components.html(html, height=700, scrolling=False)
         
-        # Create clickable date buttons below calendar
-        st.markdown("### Select a Date:")
+        # Since we can't capture clicks from the HTML calendar in components.html,
+        # create a date selector dropdown instead
+        st.markdown("### View Games by Date:")
         
         # Get dates with games for this month
         month_start = pd.Timestamp(selected_year, selected_month, 1)
@@ -1177,33 +1178,37 @@ elif page == "📆 Monthly Calendar":
         ])
         
         if dates_with_games:
-            # Create buttons for each date
-            cols = st.columns(min(7, len(dates_with_games)))
-            selected_date = None
+            # Create a selectbox for date selection
+            date_options = [
+                f"{pd.Timestamp(date).strftime('%A, %B %d, %Y')} ({date_counts[date]} games)"
+                for date in dates_with_games
+            ]
             
-            for idx, date in enumerate(dates_with_games):
-                with cols[idx % 7]:
-                    date_str = pd.Timestamp(date).strftime('%a, %b %d')
-                    if st.button(f"{date_str} ({date_counts[date]})", key=f"date_{date}"):
-                        st.session_state.selected_date = date
+            selected_date_str = st.selectbox(
+                "Select a date to view games:",
+                date_options,
+                key="calendar_date_select"
+            )
+            
+            # Parse selected date
+            selected_date_idx = date_options.index(selected_date_str)
+            selected_date = dates_with_games[selected_date_idx]
             
             # Show games for selected date
-            if 'selected_date' in st.session_state:
-                selected_date = st.session_state.selected_date
-                st.markdown(f"### Games on {pd.Timestamp(selected_date).strftime('%A, %B %d, %Y')}")
-                
-                # Filter games for selected date
-                date_games = df[df['Date_Parsed'].dt.date == selected_date].copy()
-                
-                # Display games
-                display_cols = ['Game #', 'Division', 'Time', 'Field', 'Home', 'Away']
-                st.dataframe(
-                    date_games[display_cols],
-                    use_container_width=True,
-                    hide_index=True
-                )
-                
-                st.info(f"**Total: {len(date_games)} games**")
+            st.markdown(f"### Games on {pd.Timestamp(selected_date).strftime('%A, %B %d, %Y')}")
+            
+            # Filter games for selected date
+            date_games = df[df['Date_Parsed'].dt.date == selected_date].copy()
+            
+            # Display games
+            display_cols = ['Game #', 'Division', 'Time', 'Field', 'Home', 'Away']
+            st.dataframe(
+                date_games[display_cols],
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            st.info(f"**Total: {len(date_games)} games**")
         else:
             st.info("No games scheduled for this month.")
     else:
