@@ -430,7 +430,17 @@ elif page == "✏️ Edit Game (Admin)":
         st.markdown("---")
         st.markdown("### Step 2: Edit Game Details")
         
-        # Create form with all editable fields
+        # Get all unique values for dropdowns
+        all_divisions = sorted(df['Division'].unique())
+        all_fields = sorted(df['Field'].unique())
+        all_times = sorted(df['Time'].unique())
+        all_home_teams = sorted(df['Home'].dropna().unique())
+        all_away_teams = sorted(df['Away'].dropna().unique())
+        all_statuses = sorted(df['Status'].dropna().unique())
+        all_daycodes = sorted(df['Daycode'].dropna().unique())
+        all_dates = sorted(df['Game Date'].unique())
+        
+        # Create form with dropdowns where possible
         with st.form("edit_game_form"):
             st.markdown(f"**Editing Game #{selected_game['Game #']}**")
             
@@ -438,21 +448,77 @@ elif page == "✏️ Edit Game (Admin)":
             
             with col1:
                 new_game_num = st.text_input("Game #", value=str(selected_game['Game #']))
-                new_game_date = st.text_input("Game Date", value=str(selected_game['Game Date']))
-                new_field = st.text_input("Field", value=str(selected_game['Field']))
-                new_time = st.text_input("Time", value=str(selected_game['Time']))
+                
+                # Game Date - dropdown with all existing dates
+                current_date = str(selected_game['Game Date'])
+                if current_date in all_dates:
+                    date_index = all_dates.index(current_date)
+                else:
+                    date_index = 0
+                new_game_date = st.selectbox("Game Date", all_dates, index=date_index)
+                
+                # Field - dropdown
+                current_field = str(selected_game['Field'])
+                if current_field in all_fields:
+                    field_index = all_fields.index(current_field)
+                else:
+                    field_index = 0
+                new_field = st.selectbox("Field", all_fields, index=field_index)
+                
+                # Time - dropdown
+                current_time = str(selected_game['Time'])
+                if current_time in all_times:
+                    time_index = all_times.index(current_time)
+                else:
+                    time_index = 0
+                new_time = st.selectbox("Time", all_times, index=time_index)
             
             with col2:
-                new_home = st.text_input("Home Team", value=str(selected_game['Home']))
-                new_away = st.text_input("Away Team", value=str(selected_game['Away']))
+                # Home Team - dropdown
+                current_home = str(selected_game['Home'])
+                if current_home in all_home_teams:
+                    home_index = all_home_teams.index(current_home)
+                else:
+                    home_index = 0
+                new_home = st.selectbox("Home Team", all_home_teams, index=home_index)
+                
+                # Away Team - dropdown
+                current_away = str(selected_game['Away'])
+                if current_away in all_away_teams:
+                    away_index = all_away_teams.index(current_away)
+                else:
+                    away_index = 0
+                new_away = st.selectbox("Away Team", all_away_teams, index=away_index)
+                
                 new_week = st.number_input("Week", value=int(selected_game['Week']))
-                new_daycode = st.text_input("Daycode", value=str(selected_game['Daycode']))
+                
+                # Daycode - dropdown
+                current_daycode = str(selected_game['Daycode'])
+                if current_daycode in all_daycodes:
+                    daycode_index = all_daycodes.index(current_daycode)
+                else:
+                    daycode_index = 0
+                new_daycode = st.selectbox("Daycode", all_daycodes, index=daycode_index)
             
             with col3:
-                new_division = st.text_input("Division", value=str(selected_game['Division']))
+                # Division - dropdown
+                current_division = str(selected_game['Division'])
+                if current_division in all_divisions:
+                    div_index = all_divisions.index(current_division)
+                else:
+                    div_index = 0
+                new_division = st.selectbox("Division", all_divisions, index=div_index)
+                
                 new_game = st.text_input("Game", value=str(selected_game['Game']))
                 new_div = st.text_input("Div", value=str(selected_game['Div']))
-                new_status = st.text_input("Status", value=str(selected_game['Status']))
+                
+                # Status - dropdown
+                current_status = str(selected_game['Status'])
+                if current_status in all_statuses:
+                    status_index = all_statuses.index(current_status)
+                else:
+                    status_index = 0
+                new_status = st.selectbox("Status", all_statuses, index=status_index)
             
             # Additional fields if they exist
             col4, col5, col6 = st.columns(3)
