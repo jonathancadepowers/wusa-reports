@@ -528,7 +528,6 @@ elif page == "📊 Division Summary":
     for team in all_teams:
         team_row = {
             'Team': team
-            'Team': team
         }
         
         team_total = 0
