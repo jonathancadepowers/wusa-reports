@@ -482,8 +482,9 @@ elif page == "📋 Team vs Date Matrix":
     # Set Team as index
     matrix_df = matrix_df.set_index('Team')
     
-    # Replace None with empty string for display
-    matrix_df = matrix_df.fillna('')
+    # Replace None with empty string for display, convert numbers to int
+    for col in matrix_df.columns:
+        matrix_df[col] = matrix_df[col].apply(lambda x: int(x) if pd.notna(x) and x != '' else '')
     
     # Display the matrix using st.data_editor for better styling support
     st.data_editor(
