@@ -1678,11 +1678,17 @@ elif page == "📝 Recent Changes*":
             if len(all_changes) == 0:
                 st.info("No detailed change history available.")
             else:
-                # Convert to DataFrame and sort by timestamp (most recent first)
+                # Convert to DataFrame
                 changes_df = pd.DataFrame(all_changes)
                 
-                # Sort by timestamp descending (most recent first)
-                changes_df = changes_df.sort_values('Last Updated', ascending=False).reset_index(drop=True)
+                # Convert timestamp string to datetime for proper sorting
+                changes_df['timestamp_dt'] = pd.to_datetime(changes_df['Last Updated'])
+                
+                # Sort by datetime descending (most recent first)
+                changes_df = changes_df.sort_values('timestamp_dt', ascending=False).reset_index(drop=True)
+                
+                # Drop the temporary datetime column
+                changes_df = changes_df.drop('timestamp_dt', axis=1)
                 
                 st.markdown(f"*Showing {len(all_changes)} changes across {len(edited_games_df)} games*")
                 
