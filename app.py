@@ -35,6 +35,7 @@ page = st.sidebar.radio(
         "📊 Division Stats",
         "📋 Team vs Date Matrix",
         "📊 Division Summary by Week",
+        "✏️ Edit Game (Admin)",
         "✉️ Request Schedule Change",
         "📋 View Requests"
     ]
@@ -377,6 +378,148 @@ elif page == "📊 Division Summary by Week":
         "division_summary_by_week.csv",
         "text/csv"
     )
+
+elif page == "✏️ Edit Game (Admin)":
+    st.title("✏️ Edit Game (Admin)")
+    
+    st.markdown("""
+    **Administrator Interface:** Search for a game and edit any field including 
+    date, time, field, teams, division, etc.
+    """)
+    
+    # Step 1: Search/Select a game
+    st.markdown("### Step 1: Find the Game to Edit")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        search_division = st.selectbox(
+            "Filter by Division", 
+            ["All"] + sorted(df['Division'].unique())
+        )
+    with col2:
+        search_week = st.selectbox(
+            "Filter by Week",
+            ["All"] + sorted(df['Week'].unique())
+        )
+    
+    # Filter games
+    search_df = df.copy()
+    if search_division != "All":
+        search_df = search_df[search_df['Division'] == search_division]
+    if search_week != "All":
+        search_df = search_df[search_df['Week'] == search_week]
+    
+    # Display filtered games with Game # as identifier
+    st.markdown(f"**Found {len(search_df)} games**")
+    
+    # Create game selection options
+    game_options = []
+    game_indices = []
+    for idx, row in search_df.iterrows():
+        game_display = f"Game #{row['Game #']} | {row['Game Date']} {row['Time']} | {row['Division']} | {row['Home']} vs {row['Away']} @ {row['Field']}"
+        game_options.append(game_display)
+        game_indices.append(idx)
+    
+    if len(game_options) == 0:
+        st.info("No games found with selected filters")
+    else:
+        selected_game_display = st.selectbox("Select Game to Edit", game_options)
+        selected_idx = game_indices[game_options.index(selected_game_display)]
+        selected_game = df.loc[selected_idx]
+        
+        st.markdown("---")
+        st.markdown("### Step 2: Edit Game Details")
+        
+        # Create form with all editable fields
+        with st.form("edit_game_form"):
+            st.markdown(f"**Editing Game #{selected_game['Game #']}**")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                new_game_num = st.text_input("Game #", value=str(selected_game['Game #']))
+                new_game_date = st.text_input("Game Date", value=str(selected_game['Game Date']))
+                new_field = st.text_input("Field", value=str(selected_game['Field']))
+                new_time = st.text_input("Time", value=str(selected_game['Time']))
+            
+            with col2:
+                new_home = st.text_input("Home Team", value=str(selected_game['Home']))
+                new_away = st.text_input("Away Team", value=str(selected_game['Away']))
+                new_week = st.number_input("Week", value=int(selected_game['Week']))
+                new_daycode = st.text_input("Daycode", value=str(selected_game['Daycode']))
+            
+            with col3:
+                new_division = st.text_input("Division", value=str(selected_game['Division']))
+                new_game = st.text_input("Game", value=str(selected_game['Game']))
+                new_div = st.text_input("Div", value=str(selected_game['Div']))
+                new_status = st.text_input("Status", value=str(selected_game['Status']))
+            
+            # Additional fields if they exist
+            col4, col5, col6 = st.columns(3)
+            with col4:
+                new_comment = st.text_area("Comment", value=str(selected_game.get('Comment', '')))
+            with col5:
+                new_original_date = st.text_input("Original Date", value=str(selected_game.get('Original Date', '')))
+            
+            # Submit button
+            col_submit1, col_submit2 = st.columns([1, 4])
+            with col_submit1:
+                submitted = st.form_submit_button("💾 Save Changes", type="primary")
+            with col_submit2:
+                cancel = st.form_submit_button("❌ Cancel")
+            
+            if submitted:
+                # Update the database
+                conn = sqlite3.connect('wusa_schedule.db')
+                cursor = conn.cursor()
+                
+                # Build update query
+                update_query = """
+                    UPDATE games SET
+                        "Game #" = ?,
+                        "Game Date" = ?,
+                        "Field" = ?,
+                        "Time" = ?,
+                        "Home" = ?,
+                        "Away" = ?,
+                        "Week" = ?,
+                        "Daycode" = ?,
+                        "Division" = ?,
+                        "Game" = ?,
+                        "Div" = ?,
+                        "Status" = ?,
+                        "Comment" = ?,
+                        "Original Date" = ?
+                    WHERE "Game #" = ?
+                """
+                
+                cursor.execute(update_query, (
+                    new_game_num,
+                    new_game_date,
+                    new_field,
+                    new_time,
+                    new_home,
+                    new_away,
+                    new_week,
+                    new_daycode,
+                    new_division,
+                    new_game,
+                    new_div,
+                    new_status,
+                    new_comment,
+                    new_original_date,
+                    selected_game['Game #']  # WHERE clause
+                ))
+                
+                conn.commit()
+                conn.close()
+                
+                # Clear cache to reload data
+                st.cache_data.clear()
+                
+                st.success(f"✅ Game #{new_game_num} updated successfully!")
+                st.info("🔄 Page will reload with updated data...")
+                st.rerun()
 
 elif page == "✉️ Request Schedule Change":
     st.title("✉️ Request Schedule Change")
