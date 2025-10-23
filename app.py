@@ -783,27 +783,21 @@ elif page == "✏️ Edit Game*":
         selected_game = df.loc[selected_idx]
         
         st.markdown("---")
-        st.markdown("### Step 2: Edit Game Details")
+        st.markdown("### Step 2: Edit Game")
         
         # Get all unique values for dropdowns
-        all_divisions = sort_divisions(df['Division'].unique())
         all_fields = sorted(df['Field'].unique())
         all_times = sorted(df['Time'].unique())
         all_home_teams = sorted(df['Home'].dropna().unique())
         all_away_teams = sorted(df['Away'].dropna().unique())
         all_statuses = sorted(df['Status'].dropna().unique())
-        all_daycodes = sorted(df['Daycode'].dropna().unique())
         all_dates = sorted(df['Game Date'].unique())
         
         # Create form with dropdowns where possible
         with st.form("edit_game_form"):
-            st.markdown(f"**Editing Game #{selected_game['Game #']}**")
-            
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                new_game_num = st.text_input("Game #", value=str(selected_game['Game #']))
-                
                 # Game Date - dropdown with all existing dates
                 current_date = str(selected_game['Game Date'])
                 if current_date in all_dates:
@@ -845,27 +839,19 @@ elif page == "✏️ Edit Game*":
                     away_index = 0
                 new_away = st.selectbox("Away Team", all_away_teams, index=away_index)
                 
-                new_week = st.number_input("Week", value=int(selected_game['Week']))
-                
-                # Daycode - dropdown
-                current_daycode = str(selected_game['Daycode'])
-                if current_daycode in all_daycodes:
-                    daycode_index = all_daycodes.index(current_daycode)
+                # Status - dropdown
+                current_status = str(selected_game['Status'])
+                if current_status in all_statuses:
+                    status_index = all_statuses.index(current_status)
                 else:
-                    daycode_index = 0
-                new_daycode = st.selectbox("Daycode", all_daycodes, index=daycode_index)
+                    status_index = 0
+                new_status = st.selectbox("Status", all_statuses, index=status_index)
             
             with col3:
-                # Division - dropdown
-                current_division = str(selected_game['Division'])
-                if current_division in all_divisions:
-                    div_index = all_divisions.index(current_division)
-                else:
-                    div_index = 0
-                new_division = st.selectbox("Division", all_divisions, index=div_index)
-                
-                new_game = st.text_input("Game", value=str(selected_game['Game']))
-                new_div = st.text_input("Div", value=str(selected_game['Div']))
+                # Read-only fields (displayed but not editable)
+                st.text_input("Division", value=str(selected_game['Division']), disabled=True)
+                st.text_input("Week", value=str(selected_game['Week']), disabled=True)
+                st.text_input("Daycode", value=str(selected_game['Daycode']), disabled=True)
                 
                 # Status - dropdown
                 current_status = str(selected_game['Status'])
@@ -890,24 +876,19 @@ elif page == "✏️ Edit Game*":
                 cancel = st.form_submit_button("❌ Cancel")
             
             if submitted:
-                # Update the database
+                # Update the database - only update editable fields
                 conn = sqlite3.connect('wusa_schedule.db')
                 cursor = conn.cursor()
                 
-                # Build update query
+                # Build update query - excluding read-only fields (Division, Week, Daycode)
+                # and removed fields (Game #, Game, Div)
                 update_query = """
                     UPDATE games SET
-                        "Game #" = ?,
                         "Game Date" = ?,
                         "Field" = ?,
                         "Time" = ?,
                         "Home" = ?,
                         "Away" = ?,
-                        "Week" = ?,
-                        "Daycode" = ?,
-                        "Division" = ?,
-                        "Game" = ?,
-                        "Div" = ?,
                         "Status" = ?,
                         "Comment" = ?,
                         "Original Date" = ?
@@ -915,21 +896,15 @@ elif page == "✏️ Edit Game*":
                 """
                 
                 cursor.execute(update_query, (
-                    new_game_num,
                     new_game_date,
                     new_field,
                     new_time,
                     new_home,
                     new_away,
-                    new_week,
-                    new_daycode,
-                    new_division,
-                    new_game,
-                    new_div,
                     new_status,
                     new_comment,
                     new_original_date,
-                    selected_game['Game #']  # WHERE clause
+                    selected_game['Game #']  # Use original Game # as identifier
                 ))
                 
                 conn.commit()
@@ -938,7 +913,7 @@ elif page == "✏️ Edit Game*":
                 # Clear cache to reload data
                 st.cache_data.clear()
                 
-                st.success(f"✅ Game #{new_game_num} updated successfully!")
+                st.success(f"✅ Game #{selected_game['Game #']} updated successfully!")
                 st.info("🔄 Page will reload with updated data...")
                 st.rerun()
 
