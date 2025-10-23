@@ -315,14 +315,16 @@ if page == "📅 Full Schedule":
         (filtered_df['Game Date Parsed'].dt.date <= end_date)
     ]
     
-    # Drop the parsed date column before displaying
-    display_df = filtered_df.drop(columns=['Game Date Parsed'])
+    # Drop the parsed date column and internal columns before displaying
+    columns_to_drop = ['Game Date Parsed', 'Original Date', 'game_audit_trail', 'last_updated']
+    display_df = filtered_df.drop(columns=[col for col in columns_to_drop if col in filtered_df.columns])
     
     # Display with editable Comment column
     edited_df = st.data_editor(
         display_df,
         use_container_width=True,
         hide_index=True,
+        height=1500,  # Much taller table to use more of the page
         disabled=[col for col in display_df.columns if col != 'Comment'],  # Only Comment is editable
         key="schedule_editor"
     )
