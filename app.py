@@ -1060,9 +1060,6 @@ elif page == "📆 Monthly Calendar":
         cal = calendar.monthcalendar(selected_year, selected_month)
         month_name = calendar.month_name[selected_month]
         
-        # Display month header
-        st.markdown(f"### {month_name} {selected_year}")
-        
         # Add custom CSS for calendar styling
         st.markdown("""
         <style>
@@ -1180,9 +1177,9 @@ elif page == "📆 Monthly Calendar":
                     hide_index=True
                 )
             else:
-                st.info("Select a date on the calendar to view games.")
+                st.markdown("*Click a date on the calendar to view games for that day.*")
         else:
-            st.info("Select a date on the calendar to view games.")
+            st.markdown("*Click a date on the calendar to view games for that day.*")
     else:
         st.warning("No games found in the schedule.")
 
