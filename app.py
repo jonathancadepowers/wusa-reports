@@ -44,7 +44,10 @@ main_options = [
 ]
 
 # Find index for main radio
-main_index = main_options.index(st.session_state.selected_page) if not st.session_state.is_admin_page and st.session_state.selected_page in main_options else 0
+if not st.session_state.is_admin_page and st.session_state.selected_page in main_options:
+    main_index = main_options.index(st.session_state.selected_page)
+else:
+    main_index = 0
 
 main_page = st.sidebar.radio(
     "",
@@ -55,7 +58,7 @@ main_page = st.sidebar.radio(
 
 # Admin section header - using markdown with custom styling
 st.sidebar.markdown("""
-<div style="margin-top: 1rem; margin-bottom: 0rem; padding-left: 0.25rem; font-weight: 600; font-size: 0.875rem; color: rgba(49, 51, 63, 0.6);">
+<div style="margin-top: 1rem; margin-bottom: 0.5rem; padding-left: 0.25rem; font-weight: 600; font-size: 0.875rem; color: rgba(49, 51, 63, 0.6);">
 Admin
 </div>
 """, unsafe_allow_html=True)
@@ -67,7 +70,10 @@ admin_options = [
 ]
 
 # Find index for admin radio
-admin_index = admin_options.index(st.session_state.selected_page) if st.session_state.is_admin_page and st.session_state.selected_page in admin_options else 0
+if st.session_state.is_admin_page and st.session_state.selected_page in admin_options:
+    admin_index = admin_options.index(st.session_state.selected_page)
+else:
+    admin_index = 0
 
 admin_page = st.sidebar.radio(
     "",
@@ -76,16 +82,31 @@ admin_page = st.sidebar.radio(
     key="admin_pages"
 )
 
-# Update session state based on which was clicked
-if main_page != st.session_state.selected_page and main_page in main_options:
-    st.session_state.selected_page = main_page
-    st.session_state.is_admin_page = False
-    st.rerun()
+# Only update if something actually changed
+page_changed = False
 
-if admin_page != st.session_state.selected_page and admin_page in admin_options:
-    st.session_state.selected_page = admin_page
-    st.session_state.is_admin_page = True
-    st.rerun()
+if not st.session_state.is_admin_page:
+    # User is on a main page
+    if main_page != st.session_state.selected_page:
+        # Main page changed
+        st.session_state.selected_page = main_page
+        page_changed = True
+    elif admin_page != admin_options[admin_index]:
+        # User clicked an admin page
+        st.session_state.selected_page = admin_page
+        st.session_state.is_admin_page = True
+        page_changed = True
+else:
+    # User is on an admin page
+    if admin_page != st.session_state.selected_page:
+        # Admin page changed
+        st.session_state.selected_page = admin_page
+        page_changed = True
+    elif main_page != main_options[main_index]:
+        # User clicked a main page
+        st.session_state.selected_page = main_page
+        st.session_state.is_admin_page = False
+        page_changed = True
 
 # Use the selected page
 page = st.session_state.selected_page
