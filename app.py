@@ -569,12 +569,79 @@ elif page == "📊 Division Summary":
     # Convert to DataFrame
     summary_df = pd.DataFrame(summary_rows)
     
-    # Display the summary
-    st.dataframe(
-        summary_df,
-        use_container_width=True,
-        hide_index=True
-    )
+    # Create styled HTML table
+    html = """
+    <style>
+        .summary-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 14px;
+        }
+        .summary-table th, .summary-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .summary-table th {
+            background-color: #f0f2f6;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .summary-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .total-row {
+            background-color: #e8f4f8 !important;
+            font-weight: 600;
+        }
+        .total-column {
+            background-color: #e8f4f8;
+            font-weight: 600;
+        }
+        .total-cell {
+            background-color: #d4e9f2 !important;
+            font-weight: 700;
+        }
+    </style>
+    <table class="summary-table">
+        <thead>
+            <tr>
+    """
+    
+    # Add headers
+    for col in summary_df.columns:
+        html += f"<th>{col}</th>"
+    html += "</tr></thead><tbody>"
+    
+    # Add data rows
+    for idx, row in summary_df.iterrows():
+        is_total_row = 'Total' in str(row.get('Team', ''))
+        row_class = 'total-row' if is_total_row else ''
+        html += f'<tr class="{row_class}">'
+        
+        for col_idx, col in enumerate(summary_df.columns):
+            value = row[col]
+            # Check if this is the Grand Total column
+            is_total_col = col == 'Grand Total'
+            
+            if is_total_row and is_total_col:
+                cell_class = 'total-cell'
+            elif is_total_col:
+                cell_class = 'total-column'
+            else:
+                cell_class = ''
+            
+            html += f'<td class="{cell_class}">{value}</td>'
+        
+        html += "</tr>"
+    
+    html += "</tbody></table>"
+    
+    # Display the styled table
+    st.markdown(html, unsafe_allow_html=True)
     
     # Download button
     csv = summary_df.to_csv(index=False)
