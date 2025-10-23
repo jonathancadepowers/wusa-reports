@@ -1183,10 +1183,7 @@ elif page == "✏️ Edit Game*":
                     st.cache_data.clear()
                     
                     # Store success message in session state
-                    if audit_entries:
-                        st.session_state.edit_success_message = f"✅ Game #{game_num} updated successfully! Tracked {len(audit_entries)} change(s)."
-                    else:
-                        st.session_state.edit_success_message = "ℹ️ No changes were made to the game."
+                    st.session_state.edit_success_message = "✅ Changes saved and audit log updated."
                     
                     st.session_state.just_saved = True
                     st.session_state.saved_game_number = game_num
