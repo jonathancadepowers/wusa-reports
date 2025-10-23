@@ -55,7 +55,7 @@ main_page = st.sidebar.radio(
 
 # Admin section header - using markdown with custom styling
 st.sidebar.markdown("""
-<div style="margin-top: 1rem; margin-bottom: 0.5rem; padding-left: 0.25rem; font-weight: 600; font-size: 0.875rem; color: rgba(49, 51, 63, 0.6);">
+<div style="margin-top: 1rem; margin-bottom: 0rem; padding-left: 0.25rem; font-weight: 600; font-size: 0.875rem; color: rgba(49, 51, 63, 0.6);">
 Admin
 </div>
 """, unsafe_allow_html=True)
