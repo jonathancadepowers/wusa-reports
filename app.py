@@ -1066,52 +1066,69 @@ elif page == "✏️ Edit Game*":
                 else:
                     new_audit_trail = existing_audit
                 
-                # Update the database - including recalculated Week and Daycode and audit trail
-                update_query = """
-                    UPDATE games SET
-                        "Game Date" = ?,
-                        "Field" = ?,
-                        "Time" = ?,
-                        "Home" = ?,
-                        "Away" = ?,
-                        "Status" = ?,
-                        "Week" = ?,
-                        "Daycode" = ?,
-                        "Comment" = ?,
-                        "Original Date" = ?,
-                        "game_audit_trail" = ?
-                    WHERE "Game #" = ?
-                """
-                
-                cursor.execute(update_query, (
-                    new_game_date,
-                    new_field,
-                    new_time,
-                    new_home,
-                    new_away,
-                    new_status,
-                    new_week,
-                    new_daycode,
-                    new_comment,
-                    new_original_date,
-                    new_audit_trail,
-                    selected_game['Game #']  # Use original Game # as identifier
-                ))
-                
-                conn.commit()
-                conn.close()
-                
-                # Clear cache to reload data
-                st.cache_data.clear()
-                
-                # Set a flag to indicate we just saved
-                st.session_state.just_saved = True
-                st.session_state.saved_game_number = selected_game['Game #']
-                
-                if audit_entries:
-                    st.success(f"✅ Game #{selected_game['Game #']} updated successfully! Tracked {len(audit_entries)} change(s).")
-                else:
-                    st.info("ℹ️ No changes were made to the game.")
+                try:
+                    # Update the database - including recalculated Week and Daycode and audit trail
+                    update_query = """
+                        UPDATE games SET
+                            "Game Date" = ?,
+                            "Field" = ?,
+                            "Time" = ?,
+                            "Home" = ?,
+                            "Away" = ?,
+                            "Status" = ?,
+                            "Week" = ?,
+                            "Daycode" = ?,
+                            "Comment" = ?,
+                            "Original Date" = ?,
+                            "game_audit_trail" = ?
+                        WHERE "Game #" = ?
+                    """
+                    
+                    cursor.execute(update_query, (
+                        new_game_date,
+                        new_field,
+                        new_time,
+                        new_home,
+                        new_away,
+                        new_status,
+                        new_week,
+                        new_daycode,
+                        new_comment,
+                        new_original_date,
+                        new_audit_trail,
+                        selected_game['Game #']  # Use original Game # as identifier
+                    ))
+                    
+                    conn.commit()
+                    
+                    # Verify the update worked
+                    cursor.execute("SELECT \"Game Date\", Field, Time FROM games WHERE \"Game #\" = ?", (selected_game['Game #'],))
+                    verify = cursor.fetchone()
+                    
+                    conn.close()
+                    
+                    # Clear cache to reload data
+                    st.cache_data.clear()
+                    
+                    # Set a flag to indicate we just saved
+                    st.session_state.just_saved = True
+                    st.session_state.saved_game_number = selected_game['Game #']
+                    
+                    if audit_entries:
+                        st.success(f"✅ Game #{selected_game['Game #']} updated successfully! Tracked {len(audit_entries)} change(s).")
+                        # Show verification
+                        if verify:
+                            st.info(f"🔍 Verified: Date={verify[0]}, Field={verify[1]}, Time={verify[2]}")
+                    else:
+                        st.info("ℹ️ No changes were made to the game.")
+                    
+                    # Reload the page to show updated data
+                    st.rerun()
+                        
+                except Exception as e:
+                    conn.close()
+                    st.error(f"❌ Error updating game: {str(e)}")
+                    st.error(f"Debug info: Game # = {selected_game['Game #']}")
         
         # Show audit trail after the form (outside the form block)
         st.markdown("---")
