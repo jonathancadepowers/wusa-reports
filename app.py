@@ -442,9 +442,17 @@ elif page == "🏟️ Games by Field":
             .field-pivot-table tr:hover {
                 background-color: #f8f9fa;
             }
-            .totals-cell {
-                background-color: #e8f4f8;
-                font-weight: bold;
+            .total-row {
+                background-color: #fff3cd;
+                font-weight: 600;
+            }
+            .total-column {
+                background-color: #d1ecf1;
+                font-weight: 600;
+            }
+            .total-cell {
+                background-color: #ffc107;
+                font-weight: 700;
             }
         </style>
         <table class="field-pivot-table">
@@ -464,17 +472,24 @@ elif page == "🏟️ Games by Field":
             html += "<tr>"
             
             # Time column
-            cell_class = 'totals-cell' if is_total_row else ''
+            cell_class = 'total-row' if is_total_row else ''
             html += f'<th class="{cell_class}">{row["Time"]}</th>'
             
             # Field columns
             for field in all_fields:
-                cell_class = 'totals-cell' if is_total_row else ''
+                if is_total_row:
+                    cell_class = 'total-row'
+                else:
+                    cell_class = ''
                 value = row[field] if row[field] != '' else ''
                 html += f'<td class="{cell_class}">{value}</td>'
             
             # Grand Total column
-            html += f'<td class="totals-cell">{row["Grand Total"]}</td>'
+            if is_total_row:
+                cell_class = 'total-cell'
+            else:
+                cell_class = 'total-column'
+            html += f'<td class="{cell_class}">{row["Grand Total"]}</td>'
             html += "</tr>"
         
         html += "</tbody></table>"
@@ -668,9 +683,17 @@ elif page == "📋 Team vs Date Matrix":
         .matrix-table tr:hover {
             background-color: #f8f9fa;
         }
-        .matrix-totals-cell {
-            background-color: #e8f4f8;
-            font-weight: bold;
+        .total-row {
+            background-color: #fff3cd;
+            font-weight: 600;
+        }
+        .total-column {
+            background-color: #d1ecf1;
+            font-weight: 600;
+        }
+        .total-cell {
+            background-color: #ffc107;
+            font-weight: 700;
         }
     </style>
     <table class="matrix-table">
@@ -691,19 +714,26 @@ elif page == "📋 Team vs Date Matrix":
         html += "<tr>"
         
         # Team name column
-        cell_class = 'matrix-totals-cell' if is_total_row else ''
+        cell_class = 'total-row' if is_total_row else ''
         html += f'<th class="{cell_class}">{team_name}</th>'
         
         # Date columns
         for date_col in date_columns:
-            cell_class = 'matrix-totals-cell' if is_total_row else ''
+            if is_total_row:
+                cell_class = 'total-row'
+            else:
+                cell_class = ''
             value = matrix_df.loc[team_name, date_col]
             display_value = value if value != '' else ''
             html += f'<td class="{cell_class}">{display_value}</td>'
         
-        # Total Games column (always highlighted)
+        # Total Games column (highlighted differently based on row)
+        if is_total_row:
+            cell_class = 'total-cell'
+        else:
+            cell_class = 'total-column'
         total_value = matrix_df.loc[team_name, 'Total Games']
-        html += f'<td class="matrix-totals-cell">{total_value}</td>'
+        html += f'<td class="{cell_class}">{total_value}</td>'
         html += "</tr>"
     
     html += "</tbody></table>"
