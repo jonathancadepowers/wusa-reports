@@ -485,21 +485,12 @@ elif page == "📋 Team vs Date Matrix":
     # Replace None with empty string for display
     matrix_df = matrix_df.fillna('')
     
-    # Apply centering style to all cells
-    def center_all(col):
-        return ['text-align: center'] * len(col)
-    
-    styled_df = matrix_df.style.apply(center_all)
-    
-    # Set table styles for headers to be centered
-    styled_df = styled_df.set_table_styles([
-        {'selector': 'th', 'props': [('text-align', 'center')]},
-    ])
-    
-    # Display the matrix
-    st.dataframe(
-        styled_df,
-        use_container_width=True
+    # Display the matrix using st.data_editor for better styling support
+    st.data_editor(
+        matrix_df,
+        use_container_width=True,
+        disabled=True,  # Make it read-only
+        hide_index=False
     )
     
     # Download button
@@ -932,30 +923,20 @@ elif page == "📅 Teams by Day":
     # Replace empty strings with None, then fillna for display
     matrix_df = matrix_df.replace('', None).fillna('')
     
-    # Apply styling for Grand Total column background and centering
-    def style_cells(val):
-        return 'text-align: center'
-    
+    # Apply styling for Grand Total column background
     def highlight_total_column(col):
         if col.name == 'Grand Total':
-            return ['background-color: #d1ecf1; font-weight: 600; text-align: center'] * len(col)
-        elif col.name == 'Team':
-            return ['text-align: left'] * len(col)
+            return ['background-color: #d1ecf1; font-weight: 600'] * len(col)
         else:
-            return ['text-align: center'] * len(col)
+            return [''] * len(col)
     
     styled_df = matrix_df.style.apply(highlight_total_column)
     
-    # Set table styles for headers
-    styled_df = styled_df.set_table_styles([
-        {'selector': 'th', 'props': [('text-align', 'center')]},
-        {'selector': 'th.col_heading.level0.col0', 'props': [('text-align', 'left')]},
-    ])
-    
-    st.dataframe(
+    st.data_editor(
         styled_df,
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
+        disabled=True  # Make it read-only
     )
     
     # Download button
