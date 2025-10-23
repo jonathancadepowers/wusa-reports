@@ -1067,6 +1067,13 @@ elif page == "✏️ Edit Game*":
                     new_audit_trail = existing_audit
                 
                 try:
+                    # Debug: Show what we're about to save
+                    st.write("**DEBUG - Values to save:**")
+                    st.write(f"Game #: {selected_game['Game #']}")
+                    st.write(f"Old Date: {selected_game['Game Date']}, New Date: {new_game_date}")
+                    st.write(f"Old Field: {selected_game['Field']}, New Field: {new_field}")
+                    st.write(f"Old Time: {selected_game['Time']}, New Time: {new_time}")
+                    
                     # Update the database - including recalculated Week and Daycode and audit trail
                     update_query = """
                         UPDATE games SET
@@ -1084,6 +1091,8 @@ elif page == "✏️ Edit Game*":
                         WHERE "Game #" = ?
                     """
                     
+                    st.write(f"**DEBUG - Executing UPDATE for Game # {selected_game['Game #']}**")
+                    
                     cursor.execute(update_query, (
                         new_game_date,
                         new_field,
@@ -1099,11 +1108,16 @@ elif page == "✏️ Edit Game*":
                         selected_game['Game #']  # Use original Game # as identifier
                     ))
                     
+                    rows_affected = cursor.rowcount
+                    st.write(f"**DEBUG - Rows affected: {rows_affected}**")
+                    
                     conn.commit()
+                    st.write("**DEBUG - Commit successful**")
                     
                     # Verify the update worked
                     cursor.execute("SELECT \"Game Date\", Field, Time FROM games WHERE \"Game #\" = ?", (selected_game['Game #'],))
                     verify = cursor.fetchone()
+                    st.write(f"**DEBUG - After commit, database shows: {verify}**")
                     
                     conn.close()
                     
