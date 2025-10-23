@@ -96,7 +96,20 @@ except:
 # Display metrics with different background colors
 st.sidebar.info(f"**Total Games:** {total_games}")
 st.sidebar.success(f"**Games Remaining:** {games_remaining}")
-st.sidebar.warning(f"**Pending Requests:** {pending_requests}")
+
+# Custom orange background for Pending Requests
+st.sidebar.markdown(f"""
+<div style="
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    background-color: #ff8c42;
+    color: white;
+    font-weight: 600;
+    margin-bottom: 1rem;
+">
+<strong>Pending Requests:</strong> {pending_requests}
+</div>
+""", unsafe_allow_html=True)
 
 # Main content
 if page == "📅 Full Schedule":
