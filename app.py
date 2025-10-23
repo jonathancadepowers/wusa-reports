@@ -27,33 +27,35 @@ df = load_games()
 st.sidebar.title("⚾ WUSA Schedule")
 st.sidebar.markdown("**Fall 2025**")
 
-# Page selection
+# Create options list with admin section
+options = [
+    "📅 Full Schedule", 
+    "🏟️ Field Pivot", 
+    "👥 Team Schedules",
+    "📋 Team vs Date Matrix",
+    "📊 Division Summary by Week",
+    "✉️ Request Change",
+    "ADMIN_SEPARATOR",  # Placeholder for separator
+    "✏️ Edit Game",
+    "📋 View Requests"
+]
+
+# Custom format function to display separator
+def format_option(option):
+    if option == "ADMIN_SEPARATOR":
+        return "─── Admin ───"
+    return option
+
+# Single page selection with all options
 page = st.sidebar.radio(
     "",
-    [
-        "📅 Full Schedule", 
-        "🏟️ Field Pivot", 
-        "👥 Team Schedules",
-        "📋 Team vs Date Matrix",
-        "📊 Division Summary by Week",
-        "✉️ Request Change",
-    ]
+    options,
+    format_func=format_option
 )
 
-st.sidebar.markdown("**Admin**")
-
-admin_page = st.sidebar.radio(
-    "",
-    [
-        "✏️ Edit Game",
-        "📋 View Requests"
-    ],
-    key="admin_radio"
-)
-
-# Combine page selection
-if admin_page:
-    page = admin_page
+# If separator is selected, default to Full Schedule
+if page == "ADMIN_SEPARATOR":
+    page = "📅 Full Schedule"
 
 st.sidebar.info(f"**Total Games:** {len(df)}")
 
