@@ -97,15 +97,16 @@ except:
 st.sidebar.info(f"**Total Games:** {total_games}")
 st.sidebar.success(f"**Games Remaining:** {games_remaining}")
 
-# Custom orange background for Pending Requests
+# Custom softer orange background for Pending Requests to match other colors
 st.sidebar.markdown(f"""
 <div style="
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
-    background-color: #ff8c42;
-    color: white;
+    background-color: #fff3cd;
+    color: #856404;
     font-weight: 600;
     margin-bottom: 1rem;
+    border: 1px solid #ffeaa7;
 ">
 <strong>Pending Requests:</strong> {pending_requests}
 </div>
