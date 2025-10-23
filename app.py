@@ -421,7 +421,16 @@ elif page == "🏟️ Games by Field":
         for col in all_fields:
             pivot_df.loc[pivot_df.index[:-1], col] = pivot_df.loc[pivot_df.index[:-1], col].replace(0, '')
         
-        # Generate HTML table with styling
+        # Create game details dictionary for tooltips
+        game_details = {}
+        for _, game_row in date_df.iterrows():
+            key = (game_row['Time'], game_row['Field'])
+            if key not in game_details:
+                game_details[key] = []
+            game_info = f"{game_row['Division']} - {game_row['Home']} vs {game_row['Away']}"
+            game_details[key].append(game_info)
+        
+        # Generate HTML table with styling and tooltips
         html = """
         <style>
             .field-pivot-table {
@@ -454,6 +463,53 @@ elif page == "🏟️ Games by Field":
                 background-color: #ffc107;
                 font-weight: 700;
             }
+            .tooltip-cell {
+                position: relative;
+                cursor: help;
+            }
+            .tooltip-cell:hover {
+                background-color: #e8f4f8;
+            }
+            .tooltip-cell .tooltiptext {
+                visibility: hidden;
+                width: 300px;
+                background-color: #333;
+                color: #fff;
+                text-align: left;
+                border-radius: 6px;
+                padding: 12px;
+                position: absolute;
+                z-index: 1000;
+                bottom: 125%;
+                left: 50%;
+                margin-left: -150px;
+                opacity: 0;
+                transition: opacity 0.3s;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+                font-size: 13px;
+                line-height: 1.6;
+            }
+            .tooltip-cell .tooltiptext::after {
+                content: "";
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                margin-left: -5px;
+                border-width: 5px;
+                border-style: solid;
+                border-color: #333 transparent transparent transparent;
+            }
+            .tooltip-cell:hover .tooltiptext {
+                visibility: visible;
+                opacity: 1;
+            }
+            .game-item {
+                padding: 4px 0;
+                border-bottom: 1px solid #555;
+            }
+            .game-item:last-child {
+                border-bottom: none;
+            }
         </style>
         <table class="field-pivot-table">
             <thead>
@@ -479,10 +535,22 @@ elif page == "🏟️ Games by Field":
             for field in all_fields:
                 if is_total_row:
                     cell_class = 'total-row'
+                    value = row[field] if row[field] != '' else ''
+                    html += f'<td class="{cell_class}">{value}</td>'
                 else:
-                    cell_class = ''
-                value = row[field] if row[field] != '' else ''
-                html += f'<td class="{cell_class}">{value}</td>'
+                    value = row[field] if row[field] != '' else ''
+                    
+                    # Check if there are games for this time/field
+                    key = (row['Time'], field)
+                    if key in game_details and value != '':
+                        # Create tooltip with game details
+                        tooltip_content = "<br>".join([f'<div class="game-item">{game}</div>' for game in game_details[key]])
+                        html += f'''<td class="tooltip-cell">
+                            {value}
+                            <span class="tooltiptext">{tooltip_content}</span>
+                        </td>'''
+                    else:
+                        html += f'<td>{value}</td>'
             
             # Grand Total column
             if is_total_row:
