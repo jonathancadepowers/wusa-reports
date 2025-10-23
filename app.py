@@ -1625,8 +1625,6 @@ elif page == "🔍 Data Query Tool":
 elif page == "📝 Recent Changes*":
     st.title("📝 Recent Changes")
     
-    st.markdown("*View all games that have been edited, in reverse chronological order.*")
-    
     # Get games that have been edited (last_updated > 0)
     conn = sqlite3.connect('wusa_schedule.db')
     
@@ -1654,38 +1652,66 @@ elif page == "📝 Recent Changes*":
             col_left, col_right = st.columns([1, 2])
             
             with col_left:
-                st.markdown("### Modified Games")
+                # Add gray background styling
+                st.markdown("""
+                <style>
+                .left-column {
+                    background-color: #f8f9fa;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                st.markdown("### Recently Modified Games")
                 st.markdown(f"*{len(edited_games_df)} games edited*")
                 
-                # Create game selection list
-                game_options = []
-                for _, row in edited_games_df.iterrows():
+                # Create table data
+                table_data = []
+                for idx, row in edited_games_df.iterrows():
                     # Format: "8U - Wednesday, September 24, 2025 - 7:15 PM - Blizzard vs Thunder"
-                    # Then on next line: "2025-09-24"
                     game_display = f"{row['Division']} - {row['Game Date']} - {row['Time']} - {row['Home']} vs {row['Away']}"
                     
                     # Convert timestamp to date
                     from datetime import datetime
                     last_updated_date = datetime.fromtimestamp(row['last_updated']).strftime('%Y-%m-%d')
                     
-                    game_options.append({
-                        'display': game_display,
-                        'date': last_updated_date,
+                    table_data.append({
+                        'Game': game_display,
+                        'Last Update': last_updated_date,
                         'game_num': row['Game #']
                     })
                 
-                # Use radio buttons for selection
-                selected_game_idx = st.radio(
-                    "Select a game to view its change history:",
-                    range(len(game_options)),
-                    format_func=lambda i: f"{game_options[i]['display']}\n📅 Last edited: {game_options[i]['date']}",
-                    label_visibility="collapsed"
+                # Display as table
+                display_df = pd.DataFrame(table_data)
+                
+                # Use dataframe with clickable selection
+                st.markdown('<div class="left-column">', unsafe_allow_html=True)
+                
+                # Show table
+                st.dataframe(
+                    display_df[['Game', 'Last Update']],
+                    use_container_width=True,
+                    hide_index=True,
+                    height=400
                 )
                 
-                selected_game_num = game_options[selected_game_idx]['game_num']
+                # Selection input
+                game_numbers = [item['game_num'] for item in table_data]
+                game_labels = [f"Game #{item['game_num']}" for item in table_data]
+                
+                selected_idx = st.selectbox(
+                    "Select game to view history:",
+                    range(len(game_labels)),
+                    format_func=lambda i: game_labels[i]
+                )
+                
+                selected_game_num = game_numbers[selected_idx]
+                
+                st.markdown('</div>', unsafe_allow_html=True)
             
             with col_right:
-                st.markdown("### Change History")
+                st.markdown("### Selected Game's Change History")
                 
                 # Get the audit trail for the selected game
                 conn = sqlite3.connect('wusa_schedule.db')
@@ -1722,7 +1748,7 @@ elif page == "📝 Recent Changes*":
                                 use_container_width=True,
                                 hide_index=True,
                                 column_config={
-                                    'timestamp': 'Date/Time',
+                                    'timestamp': 'Updated',
                                     'field': 'Field Changed',
                                     'old_value': 'Old Value',
                                     'new_value': 'New Value'
