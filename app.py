@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 from datetime import datetime
+import pytz
 
 # Page config
 st.set_page_config(
@@ -57,7 +58,45 @@ page = st.sidebar.radio(
 
 st.sidebar.markdown("*Admin Pages")
 
-st.sidebar.info(f"**Total Games:** {len(df)}")
+# Calculate metrics
+total_games = len(df)
+
+# Calculate games remaining (games that haven't happened yet)
+from datetime import datetime
+import pytz
+
+# Get current CST time
+cst = pytz.timezone('America/Chicago')
+now_cst = datetime.now(cst)
+
+# Count games with date/time in the future
+games_remaining = 0
+for _, game in df.iterrows():
+    try:
+        # Combine game date and time
+        game_datetime_str = f"{game['Game Date']} {game['Time']}"
+        # Parse as naive datetime, then localize to CST
+        game_datetime = pd.to_datetime(game_datetime_str, format='%A, %B %d, %Y %I:%M %p')
+        game_datetime_cst = cst.localize(game_datetime)
+        
+        if game_datetime_cst > now_cst:
+            games_remaining += 1
+    except:
+        # If parsing fails, assume game is in the future
+        games_remaining += 1
+
+# Count pending requests from database
+try:
+    conn = sqlite3.connect('wusa_schedule.db')
+    pending_requests = pd.read_sql("SELECT COUNT(*) as count FROM schedule_requests", conn)['count'][0]
+    conn.close()
+except:
+    pending_requests = 0
+
+# Display metrics with different background colors
+st.sidebar.info(f"**Total Games:** {total_games}")
+st.sidebar.success(f"**Games Remaining:** {games_remaining}")
+st.sidebar.warning(f"**Pending Requests:** {pending_requests}")
 
 # Main content
 if page == "📅 Full Schedule":
