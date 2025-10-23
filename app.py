@@ -27,35 +27,22 @@ df = load_games()
 st.sidebar.title("⚾ WUSA Schedule")
 st.sidebar.markdown("**Fall 2025**")
 
-# Use a single selectbox for all pages
-all_options = [
-    "📅 Full Schedule", 
-    "🏟️ Field Pivot", 
-    "👥 Team Schedules",
-    "📋 Team vs Date Matrix",
-    "📊 Division Summary by Week",
-    "✉️ Request Change",
-    "──────────",  # Visual separator
-    "✏️ Edit Game",
-    "📋 View Requests"
-]
-
-# Custom format to show Admin label
-def format_func(option):
-    if option == "──────────":
-        return "Admin"
-    return option
-
-page = st.sidebar.selectbox(
+# Single radio group with all pages
+page = st.sidebar.radio(
     "",
-    all_options,
-    format_func=format_func,
-    label_visibility="collapsed"
+    [
+        "📅 Full Schedule", 
+        "🏟️ Field Pivot", 
+        "👥 Team Schedules",
+        "📋 Team vs Date Matrix",
+        "📊 Division Summary by Week",
+        "✉️ Request Change",
+        "✏️ Edit Game*",
+        "📋 View Requests*"
+    ]
 )
 
-# If separator selected, default to Full Schedule
-if page == "──────────":
-    page = "📅 Full Schedule"
+st.sidebar.markdown("*Admin Pages")
 
 st.sidebar.info(f"**Total Games:** {len(df)}")
 
@@ -604,7 +591,7 @@ elif page == "📊 Division Summary by Week":
         "text/csv"
     )
 
-elif page == "✏️ Edit Game":
+elif page == "✏️ Edit Game*":
     st.title("✏️ Edit Game")
     
     st.markdown("""
@@ -908,7 +895,7 @@ elif page == "✉️ Request Change":
                     st.write(f"**Type:** {request_type}")
                     st.write(f"**Reason:** {reason}")
 
-elif page == "📋 View Requests":
+elif page == "📋 View Requests*":
     st.title("📋 Schedule Change Requests")
     
     # Load requests from database
