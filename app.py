@@ -37,11 +37,25 @@ page = st.sidebar.radio(
         "👥 Team Schedules",
         "📋 Team vs Date Matrix",
         "📊 Division Summary by Week",
-        "✏️ Edit Game (Admin)",
         "✉️ Request Change",
-        "📋 View Requests"
     ]
 )
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Admin")
+
+admin_page = st.sidebar.radio(
+    "",
+    [
+        "✏️ Edit Game",
+        "📋 View Requests"
+    ],
+    key="admin_radio"
+)
+
+# Combine page selection
+if admin_page:
+    page = admin_page
 
 st.sidebar.markdown("---")
 st.sidebar.info(f"**Total Games:** {len(df)}")
@@ -591,8 +605,8 @@ elif page == "📊 Division Summary by Week":
         "text/csv"
     )
 
-elif page == "✏️ Edit Game (Admin)":
-    st.title("✏️ Edit Game (Admin)")
+elif page == "✏️ Edit Game":
+    st.title("✏️ Edit Game")
     
     st.markdown("""
     **Administrator Interface:** Search for a game and edit any field including 
