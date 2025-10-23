@@ -875,48 +875,14 @@ elif page == "✏️ Edit Game*":
         selected_idx = game_indices[game_options.index(selected_game_display)]
         selected_game = df.loc[selected_idx]
         
-        # Show audit trail if it exists
-        if 'game_audit_trail' in selected_game and selected_game['game_audit_trail']:
-            with st.expander("📜 View Change History", expanded=False):
-                import json
-                
-                audit_lines = selected_game['game_audit_trail'].strip().split('\n')
-                audit_data = []
-                
-                for line in audit_lines:
-                    if line.strip():
-                        try:
-                            entry = json.loads(line)
-                            audit_data.append(entry)
-                        except:
-                            pass
-                
-                if audit_data:
-                    # Display as a table
-                    audit_df = pd.DataFrame(audit_data)
-                    # Reverse order to show most recent first
-                    audit_df = audit_df.iloc[::-1].reset_index(drop=True)
-                    
-                    st.dataframe(
-                        audit_df[['timestamp', 'field', 'old_value', 'new_value']],
-                        use_container_width=True,
-                        hide_index=True,
-                        column_config={
-                            'timestamp': 'Date/Time',
-                            'field': 'Field Changed',
-                            'old_value': 'Old Value',
-                            'new_value': 'New Value'
-                        }
-                    )
-                else:
-                    st.info("No change history available.")
-        else:
-            st.markdown("*💡 Tip: Changes to this game will be tracked in the change history.*")
-        
         st.markdown("---")
         st.markdown("### Step 2: Edit Game")
         
-        st.markdown("*💡 Tip: Week and Daycode are automatically recalculated based on the Game Date you select.*")
+        st.markdown("""
+        *💡 Tips:*
+        - *Week and Daycode are automatically recalculated based on the Game Date you select.*
+        - *All changes to this game will be tracked in the change history below.*
+        """)
         
         # Get all unique values for dropdowns
         all_fields = sorted(df['Field'].unique())
@@ -994,11 +960,7 @@ elif page == "✏️ Edit Game*":
                 new_original_date = st.text_input("Original Date", value=str(selected_game.get('Original Date', '')))
             
             # Submit button
-            col_submit1, col_submit2 = st.columns([1, 4])
-            with col_submit1:
-                submitted = st.form_submit_button("💾 Save Changes", type="primary")
-            with col_submit2:
-                cancel = st.form_submit_button("❌ Cancel")
+            submitted = st.form_submit_button("💾 Save Changes", type="primary", use_container_width=True)
             
             if submitted:
                 # Track all changes for audit trail
@@ -1148,9 +1110,56 @@ elif page == "✏️ Edit Game*":
                     st.success(f"✅ Game #{selected_game['Game #']} updated successfully! Tracked {len(audit_entries)} change(s).")
                 else:
                     st.info("ℹ️ No changes were made to the game.")
+        
+        # Show audit trail after the form (outside the form block)
+        st.markdown("---")
+        st.markdown("### 📜 Change History")
+        
+        # Reload the game data to get latest audit trail
+        conn = sqlite3.connect('wusa_schedule.db')
+        current_game = pd.read_sql(f"SELECT * FROM games WHERE \"Game #\" = {selected_game['Game #']}", conn)
+        conn.close()
+        
+        if len(current_game) > 0 and 'game_audit_trail' in current_game.columns:
+            audit_trail = current_game.iloc[0]['game_audit_trail']
+            
+            if audit_trail and str(audit_trail).strip():
+                import json
                 
-                st.info("🔄 Page will reload with updated data...")
-                st.rerun()
+                audit_lines = str(audit_trail).strip().split('\n')
+                audit_data = []
+                
+                for line in audit_lines:
+                    if line.strip():
+                        try:
+                            entry = json.loads(line)
+                            audit_data.append(entry)
+                        except:
+                            pass
+                
+                if audit_data:
+                    # Display as a table
+                    audit_df = pd.DataFrame(audit_data)
+                    # Reverse order to show most recent first
+                    audit_df = audit_df.iloc[::-1].reset_index(drop=True)
+                    
+                    st.dataframe(
+                        audit_df[['timestamp', 'field', 'old_value', 'new_value']],
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            'timestamp': 'Date/Time',
+                            'field': 'Field Changed',
+                            'old_value': 'Old Value',
+                            'new_value': 'New Value'
+                        }
+                    )
+                else:
+                    st.info("No changes have been made to this game yet.")
+            else:
+                st.info("No changes have been made to this game yet.")
+        else:
+            st.info("No changes have been made to this game yet.")
 
 elif page == "📅 Teams by Day":
     st.title("📅 Teams by Day")
