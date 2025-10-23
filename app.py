@@ -453,6 +453,17 @@ elif page == "📋 Team vs Date Matrix":
     away_teams = division_df['Away'].dropna().unique()
     all_teams = sorted(set(list(home_teams) + list(away_teams)))
     
+    # Create date format mapping (Mon-11/3, Tue-12/1, etc.)
+    date_headers = {}
+    for date_str in sorted(division_df['Game Date'].unique()):
+        # Parse the date
+        date_obj = pd.to_datetime(date_str)
+        # Get day of week abbreviation and format as Mon-11/3
+        day_abbr = date_obj.strftime('%a')  # Mon, Tue, Wed, etc.
+        month_day = date_obj.strftime('%-m/%-d')  # Month/Day without leading zeros
+        short_date = f"{day_abbr}-{month_day}"
+        date_headers[date_str] = short_date
+    
     # Create a list to hold team game counts per date
     matrix_data = []
     
@@ -466,7 +477,8 @@ elif page == "📋 Team vs Date Matrix":
                 (division_df['Game Date'] == date)
             ]
             count = len(games_on_date)
-            team_row[date] = count if count > 0 else None
+            # Use the short date format as column name
+            team_row[date_headers[date]] = count if count > 0 else None
         
         # Add total games column
         team_total = len(division_df[
