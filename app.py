@@ -1032,9 +1032,24 @@ elif page == "📆 Monthly Calendar":
     available_months = sorted(df['Date_Parsed'].dt.to_period('M').unique())
     month_options = [f"{period.strftime('%B %Y')}" for period in available_months]
     
+    # Determine default month - current month if it has games, otherwise earliest month
+    from datetime import datetime
+    current_date = datetime.now()
+    current_period = pd.Period(current_date, freq='M')
+    
+    # Check if current month is in available months
+    if current_period in available_months:
+        default_month = f"{current_period.strftime('%B %Y')}"
+    else:
+        # Use earliest available month
+        default_month = month_options[0] if month_options else None
+    
+    # Get the index for default selection
+    default_index = month_options.index(default_month) if default_month in month_options else 0
+    
     # Month selector
     if len(month_options) > 0:
-        selected_month_str = st.selectbox("Select Month", month_options)
+        selected_month_str = st.selectbox("Select Month", month_options, index=default_index)
         
         # Parse selected month
         selected_period = pd.Period(selected_month_str, freq='M')
@@ -1164,8 +1179,6 @@ elif page == "📆 Monthly Calendar":
                     use_container_width=True,
                     hide_index=True
                 )
-                
-                st.info(f"**Total: {len(date_games)} games**")
             else:
                 st.info("Select a date on the calendar to view games.")
         else:
