@@ -26,7 +26,6 @@ df = load_games()
 # Sidebar
 st.sidebar.title("⚾ WUSA Schedule")
 st.sidebar.markdown("**Fall 2025**")
-st.sidebar.markdown("---")
 
 # Page selection
 page = st.sidebar.radio(
@@ -41,8 +40,7 @@ page = st.sidebar.radio(
     ]
 )
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Admin")
+st.sidebar.markdown("**Admin**")
 
 admin_page = st.sidebar.radio(
     "",
@@ -57,7 +55,6 @@ admin_page = st.sidebar.radio(
 if admin_page:
     page = admin_page
 
-st.sidebar.markdown("---")
 st.sidebar.info(f"**Total Games:** {len(df)}")
 
 # Main content
