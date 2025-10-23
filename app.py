@@ -466,7 +466,7 @@ elif page == "📋 Team vs Date Matrix":
                 (division_df['Game Date'] == date)
             ]
             count = len(games_on_date)
-            team_row[date] = count if count > 0 else ''
+            team_row[date] = count if count > 0 else None
         
         # Add total games column
         team_total = len(division_df[
@@ -482,20 +482,13 @@ elif page == "📋 Team vs Date Matrix":
     # Set Team as index
     matrix_df = matrix_df.set_index('Team')
     
-    # Create column config to center all columns
-    column_config = {}
-    for col in matrix_df.columns:
-        column_config[col] = st.column_config.NumberColumn(
-            col,
-            help=None,
-            format="%d"
-        )
+    # Replace None with empty string for display
+    matrix_df = matrix_df.fillna('')
     
     # Display the matrix
     st.dataframe(
         matrix_df,
-        use_container_width=True,
-        column_config=column_config
+        use_container_width=True
     )
     
     # Download button
@@ -925,33 +918,8 @@ elif page == "📅 Teams by Day":
     # Convert to DataFrame
     matrix_df = pd.DataFrame(matrix_rows)
     
-    # Create column config - center all columns except Team
-    column_config = {
-        'Team': st.column_config.TextColumn('Team', width='medium')
-    }
-    
-    # Add centered number columns for dates, and highlight Grand Total
-    for col in matrix_df.columns:
-        if col != 'Team':
-            if col == 'Grand Total':
-                column_config[col] = st.column_config.NumberColumn(
-                    col,
-                    format="%d",
-                    help=None
-                )
-            elif col == 'Dates with >1 Game':
-                column_config[col] = st.column_config.NumberColumn(
-                    col,
-                    format="%d",
-                    help=None
-                )
-            else:
-                # Date columns
-                column_config[col] = st.column_config.NumberColumn(
-                    col,
-                    format="%d",
-                    help=None
-                )
+    # Replace empty strings with None, then fillna for display
+    matrix_df = matrix_df.replace('', None).fillna('')
     
     # Apply styling for Grand Total column background
     def highlight_total_column(col):
@@ -965,8 +933,7 @@ elif page == "📅 Teams by Day":
     st.dataframe(
         styled_df,
         use_container_width=True,
-        hide_index=True,
-        column_config=column_config
+        hide_index=True
     )
     
     # Download button
