@@ -1047,9 +1047,12 @@ elif page == "📆 Monthly Calendar":
     # Get the index for default selection
     default_index = month_options.index(default_month) if default_month in month_options else 0
     
+    # Show tip before month selector
+    st.markdown("*💡 Tip: Click a date on the calendar to view games for that day.*")
+    
     # Month selector
     if len(month_options) > 0:
-        selected_month_str = st.selectbox("Select Month", month_options, index=default_index)
+        selected_month_str = st.selectbox("Month", month_options, index=default_index)
         
         # Parse selected month
         selected_period = pd.Period(selected_month_str, freq='M')
@@ -1176,10 +1179,6 @@ elif page == "📆 Monthly Calendar":
                     use_container_width=True,
                     hide_index=True
                 )
-            else:
-                st.markdown("*Click a date on the calendar to view games for that day.*")
-        else:
-            st.markdown("*Click a date on the calendar to view games for that day.*")
     else:
         st.warning("No games found in the schedule.")
 
