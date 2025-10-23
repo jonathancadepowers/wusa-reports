@@ -11,6 +11,28 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS to hide and style the Admin separator
+st.markdown("""
+<style>
+    /* Target the specific radio button for Admin */
+    div[data-testid="stSidebar"] div[role="radiogroup"] label:nth-of-type(7) input {
+        display: none !important;
+    }
+    div[data-testid="stSidebar"] div[role="radiogroup"] label:nth-of-type(7) {
+        pointer-events: none;
+        cursor: default;
+    }
+    div[data-testid="stSidebar"] div[role="radiogroup"] label:nth-of-type(7) div[data-testid="stMarkdownContainer"] {
+        padding-left: 0 !important;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: rgba(49, 51, 63, 0.6);
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Load data (cached so it's fast)
 @st.cache_data
 def load_games():
@@ -27,75 +49,28 @@ df = load_games()
 st.sidebar.title("⚾ WUSA Schedule")
 st.sidebar.markdown("**Fall 2025**")
 
-# Initialize session state
-if 'selected_page' not in st.session_state:
-    st.session_state.selected_page = "📅 Full Schedule"
-    st.session_state.is_admin_page = False
-
-# Main pages
-main_options = [
+# Single radio group with all pages
+all_pages = [
     "📅 Full Schedule", 
     "🏟️ Field Pivot", 
     "👥 Team Schedules",
     "📋 Team vs Date Matrix",
     "📊 Division Summary by Week",
     "✉️ Request Change",
-]
-
-# Set index to None if admin page is selected, otherwise find the current page
-if st.session_state.is_admin_page:
-    main_index = None
-elif st.session_state.selected_page in main_options:
-    main_index = main_options.index(st.session_state.selected_page)
-else:
-    main_index = 0
-
-main_page = st.sidebar.radio(
-    "",
-    main_options,
-    index=main_index,
-    key="main_pages"
-)
-
-# Admin section header - using markdown with custom styling
-st.sidebar.markdown("""
-<div style="margin-top: 1rem; margin-bottom: 0.5rem; padding-left: 0.25rem; font-weight: 600; font-size: 0.875rem; color: rgba(49, 51, 63, 0.6);">
-Admin
-</div>
-""", unsafe_allow_html=True)
-
-# Admin pages
-admin_options = [
+    "Admin",  # This will be styled as a header
     "✏️ Edit Game",
     "📋 View Requests"
 ]
 
-# Set index to None if main page is selected, otherwise find the current admin page
-if not st.session_state.is_admin_page:
-    admin_index = None
-elif st.session_state.selected_page in admin_options:
-    admin_index = admin_options.index(st.session_state.selected_page)
-else:
-    admin_index = 0
-
-admin_page = st.sidebar.radio(
+page = st.sidebar.radio(
     "",
-    admin_options,
-    index=admin_index,
-    key="admin_pages"
+    all_pages,
+    key="page_selector"
 )
 
-# Update state when user clicks
-if main_page is not None and (st.session_state.is_admin_page or main_page != st.session_state.selected_page):
-    st.session_state.selected_page = main_page
-    st.session_state.is_admin_page = False
-
-if admin_page is not None and (not st.session_state.is_admin_page or admin_page != st.session_state.selected_page):
-    st.session_state.selected_page = admin_page
-    st.session_state.is_admin_page = True
-
-# Use the selected page
-page = st.session_state.selected_page
+# If Admin is somehow selected, default to Full Schedule
+if page == "Admin":
+    page = "📅 Full Schedule"
 
 st.sidebar.info(f"**Total Games:** {len(df)}")
 
