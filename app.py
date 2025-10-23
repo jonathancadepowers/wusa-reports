@@ -482,13 +482,20 @@ elif page == "📋 Team vs Date Matrix":
     # Set Team as index
     matrix_df = matrix_df.set_index('Team')
     
-    # Style all cells to be centered
-    styled_matrix = matrix_df.style.set_properties(**{'text-align': 'center'})
+    # Create column config to center all columns
+    column_config = {}
+    for col in matrix_df.columns:
+        column_config[col] = st.column_config.NumberColumn(
+            col,
+            help=None,
+            format="%d"
+        )
     
     # Display the matrix
     st.dataframe(
-        styled_matrix,
-        use_container_width=True
+        matrix_df,
+        use_container_width=True,
+        column_config=column_config
     )
     
     # Download button
@@ -918,27 +925,48 @@ elif page == "📅 Teams by Day":
     # Convert to DataFrame
     matrix_df = pd.DataFrame(matrix_rows)
     
-    # Style the Grand Total column
+    # Create column config - center all columns except Team
+    column_config = {
+        'Team': st.column_config.TextColumn('Team', width='medium')
+    }
+    
+    # Add centered number columns for dates, and highlight Grand Total
+    for col in matrix_df.columns:
+        if col != 'Team':
+            if col == 'Grand Total':
+                column_config[col] = st.column_config.NumberColumn(
+                    col,
+                    format="%d",
+                    help=None
+                )
+            elif col == 'Dates with >1 Game':
+                column_config[col] = st.column_config.NumberColumn(
+                    col,
+                    format="%d",
+                    help=None
+                )
+            else:
+                # Date columns
+                column_config[col] = st.column_config.NumberColumn(
+                    col,
+                    format="%d",
+                    help=None
+                )
+    
+    # Apply styling for Grand Total column background
     def highlight_total_column(col):
         if col.name == 'Grand Total':
             return ['background-color: #d1ecf1; font-weight: 600'] * len(col)
         else:
             return [''] * len(col)
     
-    # Center all columns except Team
-    def center_except_team(col):
-        if col.name == 'Team':
-            return ['text-align: left'] * len(col)
-        else:
-            return ['text-align: center'] * len(col)
-    
-    # Display with styling
-    styled_df = matrix_df.style.apply(highlight_total_column).apply(center_except_team)
+    styled_df = matrix_df.style.apply(highlight_total_column)
     
     st.dataframe(
         styled_df,
         use_container_width=True,
-        hide_index=True
+        hide_index=True,
+        column_config=column_config
     )
     
     # Download button
