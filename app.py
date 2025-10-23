@@ -1358,7 +1358,7 @@ elif page == "✏️ Edit Game*":
         
         # Show audit trail after the form (outside the form block)
         st.markdown("---")
-        st.markdown("### 📜 Game's Change History")
+        st.markdown("### 📜 Selected Game's Change History")
         
         # Always get fresh data from database (not cached) to show latest changes
         conn = sqlite3.connect('wusa_schedule.db')
