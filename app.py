@@ -1136,8 +1136,8 @@ elif page == "✏️ Edit Game*":
                     else:
                         st.info("ℹ️ No changes were made to the game.")
                     
-                    # Reload the page to show updated data
-                    st.rerun()
+                    # TEMPORARILY DISABLED: Reload the page to show updated data
+                    # st.rerun()
                         
                 except Exception as e:
                     conn.close()
