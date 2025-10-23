@@ -21,6 +21,16 @@ def load_games():
     df['Game Date Parsed'] = pd.to_datetime(df['Game Date'])
     return df
 
+# Helper function to sort divisions numerically (7U, 8U, 9U, 10U, 12U, 14U)
+def sort_divisions(divisions):
+    def get_numeric_value(div):
+        try:
+            # Extract numeric part from division (e.g., "10U" -> 10)
+            return int(''.join(filter(str.isdigit, str(div))))
+        except:
+            return 999  # Put non-numeric divisions at the end
+    return sorted(divisions, key=get_numeric_value)
+
 df = load_games()
 
 # Sidebar
@@ -55,8 +65,8 @@ if page == "📅 Full Schedule":
     with col1:
         selected_divisions = st.multiselect(
             "Division", 
-            sorted(df['Division'].unique()), 
-            default=sorted(df['Division'].unique())
+            sort_divisions(df['Division'].unique()), 
+            default=sort_divisions(df['Division'].unique())
         )
     with col2:
         selected_weeks = st.multiselect(
@@ -431,7 +441,7 @@ elif page == "📋 Team vs Date Matrix":
     # Division filter
     selected_division = st.selectbox(
         "Division", 
-        sorted(df['Division'].unique())
+        sort_divisions(df['Division'].unique())
     )
     
     # Filter by division
@@ -492,7 +502,7 @@ elif page == "📊 Division Summary":
     # Division filter
     selected_division = st.selectbox(
         "Division", 
-        sorted(df['Division'].unique())
+        sort_divisions(df['Division'].unique())
     )
     
     # Filter games for selected division
@@ -590,7 +600,7 @@ elif page == "✏️ Edit Game*":
     with col1:
         search_division = st.selectbox(
             "Filter by Division", 
-            ["All"] + sorted(df['Division'].unique())
+            ["All"] + sort_divisions(df['Division'].unique())
         )
     with col2:
         search_week = st.selectbox(
@@ -627,7 +637,7 @@ elif page == "✏️ Edit Game*":
         st.markdown("### Step 2: Edit Game Details")
         
         # Get all unique values for dropdowns
-        all_divisions = sorted(df['Division'].unique())
+        all_divisions = sort_divisions(df['Division'].unique())
         all_fields = sorted(df['Field'].unique())
         all_times = sorted(df['Time'].unique())
         all_home_teams = sorted(df['Home'].dropna().unique())
@@ -802,7 +812,7 @@ elif page == "✉️ Request Change":
         # Game selection
         col1, col2 = st.columns(2)
         with col1:
-            selected_division = st.selectbox("Division", sorted(df['Division'].unique()))
+            selected_division = st.selectbox("Division", sort_divisions(df['Division'].unique()))
         with col2:
             # Filter games by selected division
             division_games = df[df['Division'] == selected_division]
