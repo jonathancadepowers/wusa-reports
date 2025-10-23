@@ -807,7 +807,19 @@ elif page == "✏️ Edit Game*":
                 team_division_map[team] = division
         
         # Create formatted team list: "Division - Team Name"
-        team_options = ["All"] + sorted([f"{team_division_map[team]} - {team}" for team in all_teams if team in team_division_map])
+        team_list = [f"{team_division_map[team]} - {team}" for team in all_teams if team in team_division_map]
+        
+        # Sort by division (numerically) then by team name
+        def sort_key(team_str):
+            division, team_name = team_str.split(" - ", 1)
+            # Extract numeric part from division (e.g., "10U" -> 10)
+            try:
+                div_num = int(''.join(filter(str.isdigit, division)))
+            except:
+                div_num = 999
+            return (div_num, team_name)
+        
+        team_options = ["All"] + sorted(team_list, key=sort_key)
         
         search_team = st.selectbox("Team", team_options)
     with col2:
