@@ -29,7 +29,7 @@ def sort_divisions(divisions):
             # Extract numeric part from division (e.g., "10U" -> 10)
             return int(''.join(filter(str.isdigit, str(div))))
         except:
-            return 0
+            return 999  # Put non-numeric divisions at the end
     return sorted(divisions, key=get_numeric_value)
 
 # Helper function to calculate Week and Daycode from Game Date
@@ -53,9 +53,6 @@ def calculate_week_and_daycode(game_date_str):
     except:
         # If parsing fails, return defaults
         return 0, 0
-        except:
-            return 999  # Put non-numeric divisions at the end
-    return sorted(divisions, key=get_numeric_value)
 
 df = load_games()
 
