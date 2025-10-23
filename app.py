@@ -1724,7 +1724,8 @@ elif page == "🔍 Data Query Tool*":
         label_visibility="collapsed"
     )
     
-    col1, col2 = st.columns(2)
+    # Put buttons in columns to control placement
+    col1, col2, col3 = st.columns([0.8, 1.2, 10])
     with col1:
         run_button = st.button("▶️ Run Query", type="primary")
     with col2:
