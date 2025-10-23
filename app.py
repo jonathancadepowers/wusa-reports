@@ -1029,7 +1029,7 @@ elif page == "📆 Monthly Calendar":
     date_counts = df.groupby(df['Date_Parsed'].dt.date).size().to_dict()
     
     # Get available months
-    available_months = df['Date_Parsed'].dt.to_period('M').unique().sort_values()
+    available_months = sorted(df['Date_Parsed'].dt.to_period('M').unique())
     month_options = [f"{period.strftime('%B %Y')}" for period in available_months]
     
     # Month selector
