@@ -28,7 +28,14 @@ st.sidebar.markdown("---")
 # Page selection
 page = st.sidebar.radio(
     "Select Report:",
-    ["📅 Full Schedule", "🏟️ Field Pivot", "👥 Team Schedules", "📊 Division Stats"]
+    [
+        "📅 Full Schedule", 
+        "🏟️ Field Pivot", 
+        "👥 Team Schedules", 
+        "📊 Division Stats",
+        "✉️ Request Schedule Change",
+        "📋 View Requests"
+    ]
 )
 
 st.sidebar.markdown("---")
@@ -39,191 +46,321 @@ if page == "📅 Full Schedule":
     st.title("📅 Full Schedule")
     
     # Filters
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         selected_divisions = st.multiselect(
             "Division", 
-            sorted(df['Division'].unique()), 
-            default=sorted(df['Division'].unique())
+            sorted(df['DIVISION'].unique()), 
+            default=sorted(df['DIVISION'].unique())
         )
     with col2:
         selected_weeks = st.multiselect(
             "Week", 
-            sorted(df['Week'].unique()), 
-            default=sorted(df['Week'].unique())
+            sorted(df['WEEK'].unique()), 
+            default=sorted(df['WEEK'].unique())
         )
-    
-    col3, col4 = st.columns(2)
     with col3:
-        selected_fields = st.multiselect("Field", sorted(df['Field'].unique()))
-    with col4:
-        # Get all teams - filter out any None/NaN values
-        home_teams = set(df['Home'].dropna().unique())
-        away_teams = set(df['Away'].dropna().unique())
-        all_teams = sorted(home_teams | away_teams)
-        selected_teams = st.multiselect("Team", all_teams)
+        selected_fields = st.multiselect("Field", sorted(df['FIELD'].unique()))
     
     # Filter data
     filtered_df = df[
-        df['Division'].isin(selected_divisions) & 
-        df['Week'].isin(selected_weeks)
+        df['DIVISION'].isin(selected_divisions) & 
+        df['WEEK'].isin(selected_weeks)
     ]
     if selected_fields:
-        filtered_df = filtered_df[filtered_df['Field'].isin(selected_fields)]
-    if selected_teams:
-        # Filter to games where selected teams are either home or away
-        filtered_df = filtered_df[
-            filtered_df['Home'].isin(selected_teams) | 
-            filtered_df['Away'].isin(selected_teams)
-        ]
+        filtered_df = filtered_df[filtered_df['FIELD'].isin(selected_fields)]
     
     # Display
     st.dataframe(
-        filtered_df[['Week', 'Game Date', 'Time', 'Field', 'Division', 'Home', 'Away']],
+        filtered_df,
         use_container_width=True,
-        height=600
+        hide_index=True
     )
     
     # Download button
     csv = filtered_df.to_csv(index=False)
     st.download_button(
-        "📥 Download Filtered Schedule (CSV)",
+        "📥 Download as CSV",
         csv,
-        "filtered_schedule.csv",
+        "wusa_schedule.csv",
         "text/csv"
     )
 
 elif page == "🏟️ Field Pivot":
-    st.title("🏟️ Field Utilization Report")
+    st.title("🏟️ Field Pivot Report")
+    
+    # Week filter
+    selected_week = st.selectbox("Select Week", sorted(df['WEEK'].unique()))
+    
+    # Filter by week
+    week_df = df[df['WEEK'] == selected_week]
     
     # Create pivot table
-    pivot = df.pivot_table(
-        index=['Game Date', 'Time'],
-        columns='Field',
-        values='Week',
-        aggfunc='count',
-        fill_value=0
+    pivot = week_df.pivot_table(
+        index='TIME',
+        columns='FIELD',
+        values='DIVISION',
+        aggfunc='first',
+        fill_value=''
     )
     
-    # Add grand total
-    pivot['Grand Total'] = pivot.sum(axis=1)
+    st.dataframe(
+        pivot,
+        use_container_width=True
+    )
     
-    # Display
-    st.dataframe(pivot, use_container_width=True, height=600)
-    
-    # Summary stats
-    st.markdown("### Summary")
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total Time Slots", len(pivot))
-    with col2:
-        st.metric("Busiest Slot", f"{int(pivot['Grand Total'].max())} games")
-    with col3:
-        st.metric("Avg Games/Slot", f"{pivot['Grand Total'].mean():.1f}")
-    with col4:
-        st.metric("Total Fields", len(pivot.columns) - 1)
-    
-    # Chart
-    st.markdown("### Games Per Field")
-    field_counts = df.groupby('Field').size().sort_values(ascending=False)
-    st.bar_chart(field_counts)
+    # Download button
+    csv = pivot.to_csv()
+    st.download_button(
+        "📥 Download as CSV",
+        csv,
+        f"field_pivot_week_{selected_week}.csv",
+        "text/csv"
+    )
 
 elif page == "👥 Team Schedules":
     st.title("👥 Team Schedules")
     
-    # Get all teams - filter out any None/NaN values
-    home_teams = set(df['Home'].dropna().unique())
-    away_teams = set(df['Away'].dropna().unique())
-    all_teams = sorted(home_teams | away_teams)
+    # Get all unique teams (both home and away)
+    home_teams = df['HOME TEAM'].unique()
+    away_teams = df['AWAY TEAM'].unique()
+    all_teams = sorted(set(list(home_teams) + list(away_teams)))
     
     # Team selector
     selected_team = st.selectbox("Select Team", all_teams)
     
-    if selected_team:
-        # Get team's games
-        team_games = df[
-            (df['Home'] == selected_team) | (df['Away'] == selected_team)
-        ].copy()
-        
-        # Add opponent column
-        team_games['Opponent'] = team_games.apply(
-            lambda row: row['Away'] if row['Home'] == selected_team else row['Home'],
-            axis=1
-        )
-        
-        # Add home/away indicator
-        team_games['Home/Away'] = team_games.apply(
-            lambda row: 'Home' if row['Home'] == selected_team else 'Away',
-            axis=1
-        )
-        
-        # Display
-        st.markdown(f"### {selected_team} - {len(team_games)} Games")
-        
-        st.dataframe(
-            team_games[['Week', 'Game Date', 'Time', 'Field', 'Opponent', 'Home/Away']],
-            use_container_width=True
-        )
-        
-        # Stats
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Total Games", len(team_games))
-        with col2:
-            home_games = len(team_games[team_games['Home/Away'] == 'Home'])
-            st.metric("Home Games", home_games)
-        with col3:
-            away_games = len(team_games[team_games['Home/Away'] == 'Away'])
-            st.metric("Away Games", away_games)
-        with col4:
-            division = team_games['Division'].iloc[0]
-            st.metric("Division", division)
-        
-        # Download team schedule
-        csv = team_games[['Game Date', 'Time', 'Field', 'Opponent', 'Home/Away']].to_csv(index=False)
-        st.download_button(
-            f"📥 Download {selected_team} Schedule",
-            csv,
-            f"{selected_team}_schedule.csv",
-            "text/csv"
-        )
+    # Filter games for this team
+    team_games = df[
+        (df['HOME TEAM'] == selected_team) | 
+        (df['AWAY TEAM'] == selected_team)
+    ].copy()
+    
+    # Add Home/Away indicator
+    team_games['Home/Away'] = team_games.apply(
+        lambda row: 'Home' if row['HOME TEAM'] == selected_team else 'Away',
+        axis=1
+    )
+    
+    # Display metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Games", len(team_games))
+    with col2:
+        home_games = len(team_games[team_games['Home/Away'] == 'Home'])
+        st.metric("Home Games", home_games)
+    with col3:
+        away_games = len(team_games[team_games['Home/Away'] == 'Away'])
+        st.metric("Away Games", away_games)
+    
+    # Display schedule
+    st.dataframe(
+        team_games[['WEEK', 'DATE', 'TIME', 'FIELD', 'HOME TEAM', 'AWAY TEAM', 'Home/Away']],
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Download button
+    csv = team_games.to_csv(index=False)
+    st.download_button(
+        "📥 Download as CSV",
+        csv,
+        f"{selected_team}_schedule.csv",
+        "text/csv"
+    )
 
 elif page == "📊 Division Stats":
     st.title("📊 Division Statistics")
     
     # Games per division
     st.markdown("### Games Per Division")
-    div_counts = df.groupby('Division').size().sort_values(ascending=False)
+    div_counts = df.groupby('DIVISION').size().sort_values(ascending=False)
+    st.bar_chart(div_counts)
     
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.bar_chart(div_counts)
-    
-    with col2:
-        st.dataframe(
-            pd.DataFrame({
-                'Division': div_counts.index,
-                'Total Games': div_counts.values
-            }),
-            use_container_width=True
-        )
+    # Show table
+    st.dataframe(
+        pd.DataFrame({
+            'Division': div_counts.index,
+            'Total Games': div_counts.values
+        }),
+        use_container_width=True,
+        hide_index=True
+    )
     
     # Games per week by division
     st.markdown("### Games Per Week by Division")
-    week_div = df.groupby(['Week', 'Division']).size().reset_index(name='Games')
-    pivot_week = week_div.pivot(index='Week', columns='Division', values='Games').fillna(0)
+    week_div = df.groupby(['WEEK', 'DIVISION']).size().reset_index(name='Games')
+    pivot_week = week_div.pivot(index='WEEK', columns='DIVISION', values='Games').fillna(0)
     st.line_chart(pivot_week)
+
+elif page == "✉️ Request Schedule Change":
+    st.title("✉️ Request Schedule Change")
     
-    # Team counts per division
-    st.markdown("### Teams Per Division")
-    team_counts = []
-    for division in sorted(df['Division'].unique()):
-        div_games = df[df['Division'] == division]
-        # Filter out None/NaN values when getting teams
-        home_teams = set(div_games['Home'].dropna().unique())
-        away_teams = set(div_games['Away'].dropna().unique())
-        teams = home_teams | away_teams
-        team_counts.append({'Division': division, 'Teams': len(teams)})
+    st.markdown("""
+    Use this form to request changes to the schedule. Your request will be 
+    logged and reviewed by the scheduling team.
+    """)
     
-    st.dataframe(pd.DataFrame(team_counts), use_container_width=True)
+    with st.form("schedule_request_form"):
+        # Email address (required)
+        email = st.text_input(
+            "Your Email Address *",
+            placeholder="your.email@example.com",
+            help="We'll use this to follow up on your request"
+        )
+        
+        # Game selection
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_division = st.selectbox("Division", sorted(df['DIVISION'].unique()))
+        with col2:
+            # Filter games by selected division
+            division_games = df[df['DIVISION'] == selected_division]
+            game_options = [
+                f"{row['DATE']} - {row['TIME']} - {row['HOME TEAM']} vs {row['AWAY TEAM']}"
+                for _, row in division_games.iterrows()
+            ]
+            selected_game = st.selectbox("Select Game", game_options)
+        
+        # Request type
+        request_type = st.selectbox(
+            "Type of Request",
+            ["Reschedule Game", "Change Field", "Change Time", "Other"]
+        )
+        
+        # Reason (required)
+        reason = st.text_area(
+            "Reason for Request *",
+            placeholder="Please explain why you need this change...",
+            height=150,
+            help="Be as specific as possible to help us process your request"
+        )
+        
+        # Submit button
+        submitted = st.form_submit_button("Submit Request", type="primary")
+        
+        if submitted:
+            # Validation
+            if not email or not email.strip():
+                st.error("❌ Email address is required")
+            elif "@" not in email:
+                st.error("❌ Please enter a valid email address")
+            elif not reason or not reason.strip():
+                st.error("❌ Please provide a reason for your request")
+            else:
+                # Save to database
+                conn = sqlite3.connect('wusa_schedule.db')
+                cursor = conn.cursor()
+                
+                # Create requests table if it doesn't exist
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS schedule_requests (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        email TEXT NOT NULL,
+                        division TEXT,
+                        game_details TEXT,
+                        request_type TEXT,
+                        reason TEXT NOT NULL,
+                        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        status TEXT DEFAULT 'Pending'
+                    )
+                ''')
+                
+                # Insert the request
+                cursor.execute('''
+                    INSERT INTO schedule_requests 
+                    (email, division, game_details, request_type, reason)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (email, selected_division, selected_game, request_type, reason))
+                
+                conn.commit()
+                request_id = cursor.lastrowid
+                conn.close()
+                
+                st.success(f"✅ Request #{request_id} submitted successfully!")
+                st.info(f"📧 Confirmation will be sent to {email}")
+                
+                # Show what was submitted
+                with st.expander("View Submitted Request"):
+                    st.write(f"**Request ID:** {request_id}")
+                    st.write(f"**Email:** {email}")
+                    st.write(f"**Division:** {selected_division}")
+                    st.write(f"**Game:** {selected_game}")
+                    st.write(f"**Type:** {request_type}")
+                    st.write(f"**Reason:** {reason}")
+
+elif page == "📋 View Requests":
+    st.title("📋 Schedule Change Requests")
+    
+    # Load requests from database
+    conn = sqlite3.connect('wusa_schedule.db')
+    
+    # Check if table exists
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name='schedule_requests'
+    """)
+    table_exists = cursor.fetchone() is not None
+    
+    if not table_exists:
+        st.info("No requests submitted yet. The requests table will be created when the first request is submitted.")
+        conn.close()
+    else:
+        requests_df = pd.read_sql("""
+            SELECT 
+                id,
+                email,
+                division,
+                game_details,
+                request_type,
+                reason,
+                submitted_at,
+                status
+            FROM schedule_requests
+            ORDER BY submitted_at DESC
+        """, conn)
+        conn.close()
+        
+        if len(requests_df) == 0:
+            st.info("No requests submitted yet")
+        else:
+            # Filter by status
+            status_filter = st.multiselect(
+                "Filter by Status",
+                ["Pending", "Approved", "Denied"],
+                default=["Pending"]
+            )
+            
+            filtered_requests = requests_df[requests_df['status'].isin(status_filter)]
+            
+            # Display count
+            st.metric("Total Requests", len(filtered_requests))
+            
+            # Display requests
+            st.dataframe(
+                filtered_requests,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "id": "ID",
+                    "email": "Email",
+                    "division": "Division",
+                    "game_details": "Game",
+                    "request_type": "Type",
+                    "reason": st.column_config.TextColumn("Reason", width="large"),
+                    "submitted_at": st.column_config.DatetimeColumn(
+                        "Submitted", 
+                        format="MMM D, YYYY h:mm A"
+                    ),
+                    "status": "Status"
+                }
+            )
+            
+            # Download button
+            csv = filtered_requests.to_csv(index=False)
+            st.download_button(
+                "📥 Download as CSV",
+                csv,
+                "schedule_requests.csv",
+                "text/csv"
+            )
