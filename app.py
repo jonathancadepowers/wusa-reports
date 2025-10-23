@@ -878,11 +878,7 @@ elif page == "✏️ Edit Game*":
         st.markdown("---")
         st.markdown("### Step 2: Edit Game")
         
-        st.markdown("""
-        *💡 Tips:*
-        - *Week and Daycode are automatically recalculated based on the Game Date you select.*
-        - *All changes to this game will be tracked in the change history below.*
-        """)
+        st.markdown("*💡 Tips: Week and Daycode are automatically recalculated based on the Game Date you select. All changes to this game will be tracked in the change history below.*")
         
         # Get all unique values for dropdowns
         all_fields = sorted(df['Field'].unique())
@@ -960,7 +956,9 @@ elif page == "✏️ Edit Game*":
                 new_original_date = st.text_input("Original Date", value=str(selected_game.get('Original Date', '')))
             
             # Submit button
-            submitted = st.form_submit_button("💾 Save Changes", type="primary", use_container_width=True)
+            col_submit = st.columns([1, 3])[0]
+            with col_submit:
+                submitted = st.form_submit_button("💾 Save Changes", type="primary")
             
             if submitted:
                 # Track all changes for audit trail
@@ -1113,7 +1111,7 @@ elif page == "✏️ Edit Game*":
         
         # Show audit trail after the form (outside the form block)
         st.markdown("---")
-        st.markdown("### 📜 Change History")
+        st.markdown("### 📜 Game's Change History")
         
         # Reload the game data to get latest audit trail
         conn = sqlite3.connect('wusa_schedule.db')
