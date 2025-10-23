@@ -50,6 +50,7 @@ page = st.sidebar.radio(
         "📋 Team vs Date Matrix",
         "📊 Division Summary",
         "📅 Teams by Day",
+        "📆 Monthly Calendar",
         "🔍 Data Query Tool",
         "✉️ Request Change",
         "✏️ Edit Game*",
@@ -1016,6 +1017,195 @@ elif page == "📅 Teams by Day":
         f"teams_by_day_{selected_division}.csv",
         "text/csv"
     )
+
+elif page == "📆 Monthly Calendar":
+    st.title("📆 Monthly Calendar")
+    
+    import calendar
+    from calendar import monthrange
+    
+    # Get all dates and count games per date
+    df['Date_Parsed'] = pd.to_datetime(df['Game Date'])
+    date_counts = df.groupby(df['Date_Parsed'].dt.date).size().to_dict()
+    
+    # Get available months
+    available_months = df['Date_Parsed'].dt.to_period('M').unique().sort_values()
+    month_options = [f"{period.strftime('%B %Y')}" for period in available_months]
+    
+    # Month selector
+    if len(month_options) > 0:
+        selected_month_str = st.selectbox("Select Month", month_options)
+        
+        # Parse selected month
+        selected_period = pd.Period(selected_month_str, freq='M')
+        selected_year = selected_period.year
+        selected_month = selected_period.month
+        
+        # Generate calendar
+        cal = calendar.monthcalendar(selected_year, selected_month)
+        month_name = calendar.month_name[selected_month]
+        
+        # Create calendar HTML
+        html = f"""
+        <style>
+            .calendar {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 2rem;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }}
+            .calendar th {{
+                background-color: #f0f2f6;
+                padding: 1rem;
+                text-align: center;
+                font-weight: 600;
+                border: 1px solid #ddd;
+            }}
+            .calendar td {{
+                border: 1px solid #ddd;
+                padding: 0;
+                height: 100px;
+                vertical-align: top;
+                position: relative;
+                background-color: white;
+            }}
+            .calendar td.empty {{
+                background-color: #f8f9fa;
+            }}
+            .calendar td.has-games {{
+                cursor: pointer;
+                background-color: #e3f2fd;
+            }}
+            .calendar td.has-games:hover {{
+                background-color: #bbdefb;
+            }}
+            .calendar td.selected {{
+                background-color: #2196F3 !important;
+                color: white;
+            }}
+            .day-number {{
+                position: absolute;
+                top: 0.5rem;
+                left: 0.5rem;
+                font-weight: 600;
+                font-size: 1.1rem;
+            }}
+            .game-count {{
+                position: absolute;
+                bottom: 0.5rem;
+                right: 0.5rem;
+                background-color: #2196F3;
+                color: white;
+                border-radius: 50%;
+                width: 2rem;
+                height: 2rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;
+                font-size: 1rem;
+            }}
+            .selected .game-count {{
+                background-color: white;
+                color: #2196F3;
+            }}
+        </style>
+        <table class="calendar">
+            <thead>
+                <tr>
+                    <th>Sunday</th>
+                    <th>Monday</th>
+                    <th>Tuesday</th>
+                    <th>Wednesday</th>
+                    <th>Thursday</th>
+                    <th>Friday</th>
+                    <th>Saturday</th>
+                </tr>
+            </thead>
+            <tbody>
+        """
+        
+        # Create clickable dates mapping
+        date_to_index = {}
+        index = 0
+        
+        for week in cal:
+            html += "<tr>"
+            for day in week:
+                if day == 0:
+                    html += '<td class="empty"></td>'
+                else:
+                    date_obj = datetime(selected_year, selected_month, day).date()
+                    game_count = date_counts.get(date_obj, 0)
+                    
+                    if game_count > 0:
+                        date_to_index[str(date_obj)] = index
+                        has_games_class = "has-games"
+                        game_badge = f'<div class="game-count">{game_count}</div>'
+                    else:
+                        has_games_class = ""
+                        game_badge = ""
+                    
+                    html += f'''
+                        <td class="{has_games_class}" data-date="{date_obj}">
+                            <div class="day-number">{day}</div>
+                            {game_badge}
+                        </td>
+                    '''
+                    index += 1
+            html += "</tr>"
+        
+        html += """
+            </tbody>
+        </table>
+        """
+        
+        st.markdown(html, unsafe_allow_html=True)
+        
+        # Create clickable date buttons below calendar
+        st.markdown("### Select a Date:")
+        
+        # Get dates with games for this month
+        month_start = pd.Timestamp(selected_year, selected_month, 1)
+        month_end = pd.Timestamp(selected_year, selected_month, monthrange(selected_year, selected_month)[1])
+        
+        dates_with_games = sorted([
+            date for date in date_counts.keys() 
+            if month_start.date() <= date <= month_end.date() and date_counts[date] > 0
+        ])
+        
+        if dates_with_games:
+            # Create buttons for each date
+            cols = st.columns(min(7, len(dates_with_games)))
+            selected_date = None
+            
+            for idx, date in enumerate(dates_with_games):
+                with cols[idx % 7]:
+                    date_str = pd.Timestamp(date).strftime('%a, %b %d')
+                    if st.button(f"{date_str} ({date_counts[date]})", key=f"date_{date}"):
+                        st.session_state.selected_date = date
+            
+            # Show games for selected date
+            if 'selected_date' in st.session_state:
+                selected_date = st.session_state.selected_date
+                st.markdown(f"### Games on {pd.Timestamp(selected_date).strftime('%A, %B %d, %Y')}")
+                
+                # Filter games for selected date
+                date_games = df[df['Date_Parsed'].dt.date == selected_date].copy()
+                
+                # Display games
+                display_cols = ['Game #', 'Division', 'Time', 'Field', 'Home', 'Away']
+                st.dataframe(
+                    date_games[display_cols],
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                st.info(f"**Total: {len(date_games)} games**")
+        else:
+            st.info("No games scheduled for this month.")
+    else:
+        st.warning("No games found in the schedule.")
 
 elif page == "🔍 Data Query Tool":
     st.title("🔍 Data Query Tool")
