@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+from datetime import datetime
 
 # Page config
 st.set_page_config(
@@ -16,6 +17,8 @@ def load_games():
     conn = sqlite3.connect('wusa_schedule.db')
     df = pd.read_sql("SELECT * FROM games", conn)
     conn.close()
+    # Convert Game Date to datetime for filtering
+    df['Game Date Parsed'] = pd.to_datetime(df['Game Date'])
     return df
 
 df = load_games()
@@ -48,7 +51,7 @@ st.sidebar.info(f"**Total Games:** {len(df)}")
 if page == "📅 Full Schedule":
     st.title("📅 Full Schedule")
     
-    # Filters - now in 2 rows
+    # Filters - now in 3 rows
     col1, col2, col3 = st.columns(3)
     with col1:
         selected_divisions = st.multiselect(
@@ -75,6 +78,27 @@ if page == "📅 Full Schedule":
         
         selected_teams = st.multiselect("Team (Home or Away)", all_teams)
     
+    # Third row for date range filter
+    col7, col8, col9 = st.columns(3)
+    with col7:
+        # Get min and max dates from the schedule
+        min_date = df['Game Date Parsed'].min().date()
+        max_date = df['Game Date Parsed'].max().date()
+        
+        start_date = st.date_input(
+            "Start Date",
+            value=min_date,
+            min_value=min_date,
+            max_value=max_date
+        )
+    with col8:
+        end_date = st.date_input(
+            "End Date",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date
+        )
+    
     # Filter data
     filtered_df = df[
         df['Division'].isin(selected_divisions) & 
@@ -91,21 +115,30 @@ if page == "📅 Full Schedule":
             filtered_df['Away'].isin(selected_teams)
         ]
     
+    # Apply date range filter
+    filtered_df = filtered_df[
+        (filtered_df['Game Date Parsed'].dt.date >= start_date) &
+        (filtered_df['Game Date Parsed'].dt.date <= end_date)
+    ]
+    
+    # Drop the parsed date column before displaying
+    display_df = filtered_df.drop(columns=['Game Date Parsed'])
+    
     # Display with editable Comment column
     st.markdown("💡 **Tip:** You can edit the Comment column directly - changes are saved automatically!")
     
     edited_df = st.data_editor(
-        filtered_df,
+        display_df,
         use_container_width=True,
         hide_index=True,
-        disabled=[col for col in filtered_df.columns if col != 'Comment'],  # Only Comment is editable
+        disabled=[col for col in display_df.columns if col != 'Comment'],  # Only Comment is editable
         key="schedule_editor"
     )
     
     # Check if any comments were edited
-    if not edited_df.equals(filtered_df):
+    if not edited_df.equals(display_df):
         # Find rows where Comment changed
-        changed_rows = edited_df[edited_df['Comment'] != filtered_df['Comment']]
+        changed_rows = edited_df[edited_df['Comment'] != display_df['Comment']]
         
         if len(changed_rows) > 0:
             # Update database for each changed row
@@ -207,15 +240,16 @@ elif page == "👥 Team Schedules":
         away_games = len(team_games[team_games['Home/Away'] == 'Away'])
         st.metric("Away Games", away_games)
     
-    # Display schedule
+    # Display schedule (drop the parsed date column)
+    display_cols = ['Week', 'Game Date', 'Time', 'Field', 'Home', 'Away', 'Home/Away']
     st.dataframe(
-        team_games[['Week', 'Game Date', 'Time', 'Field', 'Home', 'Away', 'Home/Away']],
+        team_games[display_cols],
         use_container_width=True,
         hide_index=True
     )
     
     # Download button
-    csv = team_games.to_csv(index=False)
+    csv = team_games[display_cols].to_csv(index=False)
     st.download_button(
         "📥 Download as CSV",
         csv,
