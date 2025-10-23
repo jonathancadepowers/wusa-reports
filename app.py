@@ -482,9 +482,12 @@ elif page == "📋 Team vs Date Matrix":
     # Set Team as index
     matrix_df = matrix_df.set_index('Team')
     
+    # Style all cells to be centered
+    styled_matrix = matrix_df.style.set_properties(**{'text-align': 'center'})
+    
     # Display the matrix
     st.dataframe(
-        matrix_df,
+        styled_matrix,
         use_container_width=True
     )
     
@@ -517,22 +520,14 @@ elif page == "📊 Division Summary":
     # Create summary data for selected division only
     summary_rows = []
     
-    # Add division header row
-    summary_rows.append({
-        'Division': selected_division,
-        'Team': '',
-        **{f'Week {week}': '' for week in sorted(df['Week'].unique())},
-        'Grand Total': ''
-    })
-    
     # Track division totals per week
     division_week_totals = {}
     division_grand_total = 0
     
-    # Add row for each team
+    # Add row for each team (no division header row)
     for team in all_teams:
         team_row = {
-            'Division': '',
+            'Team': team
             'Team': team
         }
         
@@ -559,7 +554,6 @@ elif page == "📊 Division Summary":
     
     # Add division total row
     division_total_row = {
-        'Division': '',
         'Team': f'{selected_division} Total'
     }
     for week in sorted(df['Week'].unique()):
@@ -582,6 +576,9 @@ elif page == "📊 Division Summary":
         .summary-table th, .summary-table td {
             border: 1px solid #ddd;
             padding: 8px 12px;
+            text-align: center;
+        }
+        .summary-table th:first-child, .summary-table td:first-child {
             text-align: left;
         }
         .summary-table th {
@@ -929,8 +926,15 @@ elif page == "📅 Teams by Day":
         else:
             return [''] * len(col)
     
+    # Center all columns except Team
+    def center_except_team(col):
+        if col.name == 'Team':
+            return ['text-align: left'] * len(col)
+        else:
+            return ['text-align: center'] * len(col)
+    
     # Display with styling
-    styled_df = matrix_df.style.apply(highlight_total_column)
+    styled_df = matrix_df.style.apply(highlight_total_column).apply(center_except_team)
     
     st.dataframe(
         styled_df,
