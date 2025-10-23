@@ -876,19 +876,16 @@ elif page == "📅 Teams by Day":
     # Get all unique dates sorted
     all_dates = sorted(div_df['Game Date'].unique())
     
-    # Create date format mapping (M-11/3, T-12/1, etc.) and full date names
+    # Create date format mapping (M-11/3, T-12/1, etc.) with day name in header
     date_headers = {}
-    date_full_names = {}
     for date_str in all_dates:
         # Parse the date
         date_obj = pd.to_datetime(date_str)
-        # Get day of week abbreviation and format as M-11/3
-        day_abbr = date_obj.strftime('%a')[0]  # First letter of day (M, T, W, etc.)
+        # Get day of week abbreviation and format as Mon-11/3, Tue-12/1, etc.
+        day_abbr = date_obj.strftime('%a')  # Mon, Tue, Wed, etc.
         month_day = date_obj.strftime('%-m/%-d')  # Month/Day without leading zeros
         short_date = f"{day_abbr}-{month_day}"
         date_headers[date_str] = short_date
-        # Store full day name for tooltip
-        date_full_names[short_date] = date_obj.strftime('%A')  # Monday, Tuesday, etc.
     
     # Get all teams in this division
     home_teams = div_df['Home'].dropna().unique()
@@ -898,7 +895,7 @@ elif page == "📅 Teams by Day":
     # Create matrix data
     matrix_rows = []
     
-    # Add row for each team (no division header row)
+    # Add row for each team
     for team in all_teams:
         team_row = {'Team': team}
         team_total = 0
@@ -925,107 +922,21 @@ elif page == "📅 Teams by Day":
     # Convert to DataFrame
     matrix_df = pd.DataFrame(matrix_rows)
     
-    # Create styled HTML table with tooltips and Grand Total column highlighting
-    html = """
-    <style>
-        .teams-day-table {
-            border-collapse: collapse;
-            width: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 14px;
-        }
-        .teams-day-table th, .teams-day-table td {
-            border: 1px solid #ddd;
-            padding: 8px 12px;
-            text-align: left;
-        }
-        .teams-day-table th {
-            background-color: #f0f2f6;
-            font-weight: 400;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .teams-day-table tr:hover {
-            background-color: #f8f9fa;
-        }
-        .total-column {
-            background-color: #d1ecf1;
-            font-weight: 600;
-        }
-        .tooltip {
-            position: relative;
-            cursor: help;
-            z-index: 100;
-        }
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 120px;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 8px;
-            position: fixed;
-            z-index: 10000;
-            margin-top: -50px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 12px;
-            pointer-events: none;
-        }
-        .tooltip .tooltiptext::after {
-            content: "";
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            margin-left: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: #333 transparent transparent transparent;
-        }
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-    </style>
-    <table class="teams-day-table">
-        <thead>
-            <tr>
-    """
-    
-    # Add headers with tooltips for date columns
-    for col in matrix_df.columns:
-        if col in date_full_names:
-            # Date column with tooltip
-            html += f'''
-                <th class="tooltip">
-                    {col}
-                    <span class="tooltiptext">{date_full_names[col]}</span>
-                </th>
-            '''
+    # Style the Grand Total column
+    def highlight_total_column(col):
+        if col.name == 'Grand Total':
+            return ['background-color: #d1ecf1; font-weight: 600'] * len(col)
         else:
-            # Regular column
-            html += f"<th>{col}</th>"
+            return [''] * len(col)
     
-    html += "</tr></thead><tbody>"
+    # Display with styling
+    styled_df = matrix_df.style.apply(highlight_total_column)
     
-    # Add data rows
-    for idx, row in matrix_df.iterrows():
-        html += "<tr>"
-        
-        for col in matrix_df.columns:
-            value = row[col]
-            # Check if this is the Grand Total column
-            cell_class = 'total-column' if col == 'Grand Total' else ''
-            html += f'<td class="{cell_class}">{value}</td>'
-        
-        html += "</tr>"
-    
-    html += "</tbody></table>"
-    
-    # Display the styled table using st.markdown (better for tooltips than components.html)
-    st.markdown(html, unsafe_allow_html=True)
+    st.dataframe(
+        styled_df,
+        use_container_width=True,
+        hide_index=True
+    )
     
     # Download button
     csv = matrix_df.to_csv(index=False)
