@@ -34,6 +34,7 @@ page = st.sidebar.radio(
         "👥 Team Schedules",
         "📊 Division Stats",
         "📋 Team vs Date Matrix",
+        "📊 Division Summary by Week",
         "✉️ Request Schedule Change",
         "📋 View Requests"
     ]
@@ -274,6 +275,106 @@ elif page == "📋 Team vs Date Matrix":
         "📥 Download as CSV",
         csv,
         f"team_date_matrix_{selected_division}.csv",
+        "text/csv"
+    )
+
+elif page == "📊 Division Summary by Week":
+    st.title("📊 Division Summary by Week")
+    
+    st.markdown("""
+    Shows each division with team names, games per week, and grand totals.
+    Matches the format in your Google Sheet.
+    """)
+    
+    # Get all divisions
+    divisions = sorted(df['Division'].unique())
+    
+    # Create summary data
+    summary_rows = []
+    
+    for division in divisions:
+        # Filter games for this division
+        div_df = df[df['Division'] == division].copy()
+        
+        # Get all teams in this division
+        home_teams = div_df['Home'].dropna().unique()
+        away_teams = div_df['Away'].dropna().unique()
+        all_teams = sorted(set(list(home_teams) + list(away_teams)))
+        
+        # Add division header row
+        summary_rows.append({
+            'Division': division,
+            'Team': '',
+            **{f'Week {week}': '' for week in sorted(df['Week'].unique())},
+            'Grand Total': ''
+        })
+        
+        # Track division totals per week
+        division_week_totals = {}
+        division_grand_total = 0
+        
+        # Add row for each team
+        for team in all_teams:
+            team_row = {
+                'Division': '',
+                'Team': team
+            }
+            
+            team_total = 0
+            
+            # Count games per week for this team
+            for week in sorted(df['Week'].unique()):
+                week_games = div_df[
+                    ((div_df['Home'] == team) | (div_df['Away'] == team)) &
+                    (div_df['Week'] == week)
+                ]
+                count = len(week_games)
+                team_row[f'Week {week}'] = count if count > 0 else ''
+                team_total += count
+                
+                # Track for division totals
+                if week not in division_week_totals:
+                    division_week_totals[week] = 0
+                division_week_totals[week] += count
+            
+            team_row['Grand Total'] = team_total
+            division_grand_total += team_total
+            summary_rows.append(team_row)
+        
+        # Add division total row
+        division_total_row = {
+            'Division': '',
+            'Team': f'{division} Total'
+        }
+        for week in sorted(df['Week'].unique()):
+            division_total_row[f'Week {week}'] = division_week_totals.get(week, '')
+        division_total_row['Grand Total'] = division_grand_total
+        summary_rows.append(division_total_row)
+        
+        # Add blank row between divisions
+        summary_rows.append({
+            'Division': '',
+            'Team': '',
+            **{f'Week {week}': '' for week in sorted(df['Week'].unique())},
+            'Grand Total': ''
+        })
+    
+    # Convert to DataFrame
+    summary_df = pd.DataFrame(summary_rows)
+    
+    # Display the summary
+    st.dataframe(
+        summary_df,
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Download button
+    csv = summary_df.to_csv(index=False)
+    st.download_button(
+        "📥 Download as CSV",
+        csv,
+        "division_summary_by_week.csv",
         "text/csv"
     )
 
