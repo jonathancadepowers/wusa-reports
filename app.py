@@ -22,6 +22,49 @@ def load_games():
     df['Game Date Parsed'] = pd.to_datetime(df['Game Date'])
     return df
 
+# Database migration - add audit trail column if it doesn't exist
+def ensure_audit_trail_column():
+    """Ensure the game_audit_trail column exists in the database"""
+    try:
+        conn = sqlite3.connect('wusa_schedule.db')
+        cursor = conn.cursor()
+        
+        # Check if column exists
+        cursor.execute("PRAGMA table_info(games)")
+        columns = [column[1] for column in cursor.fetchall()]
+        
+        if 'game_audit_trail' not in columns:
+            cursor.execute("ALTER TABLE games ADD COLUMN game_audit_trail TEXT DEFAULT ''")
+            conn.commit()
+            print("Added game_audit_trail column")
+        
+        conn.close()
+    except Exception as e:
+        print(f"Error ensuring audit trail column: {e}")
+
+# Run migration on app startup
+ensure_audit_trail_column()
+
+# Helper function to add audit trail entry
+def add_audit_entry(game_number, field_name, old_value, new_value):
+    """
+    Add an audit trail entry for a changed field.
+    Returns the updated audit trail string.
+    """
+    import json
+    from datetime import datetime
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    entry = {
+        "timestamp": timestamp,
+        "field": field_name,
+        "old_value": str(old_value),
+        "new_value": str(new_value)
+    }
+    
+    return json.dumps(entry)
+
 # Helper function to sort divisions numerically (7U, 8U, 9U, 10U, 12U, 14U)
 def sort_divisions(divisions):
     def get_numeric_value(div):
@@ -804,6 +847,44 @@ elif page == "✏️ Edit Game*":
         selected_idx = game_indices[game_options.index(selected_game_display)]
         selected_game = df.loc[selected_idx]
         
+        # Show audit trail if it exists
+        if 'game_audit_trail' in selected_game and selected_game['game_audit_trail']:
+            with st.expander("📜 View Change History", expanded=False):
+                import json
+                
+                audit_lines = selected_game['game_audit_trail'].strip().split('\n')
+                audit_data = []
+                
+                for line in audit_lines:
+                    if line.strip():
+                        try:
+                            entry = json.loads(line)
+                            audit_data.append(entry)
+                        except:
+                            pass
+                
+                if audit_data:
+                    # Display as a table
+                    audit_df = pd.DataFrame(audit_data)
+                    # Reverse order to show most recent first
+                    audit_df = audit_df.iloc[::-1].reset_index(drop=True)
+                    
+                    st.dataframe(
+                        audit_df[['timestamp', 'field', 'old_value', 'new_value']],
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            'timestamp': 'Date/Time',
+                            'field': 'Field Changed',
+                            'old_value': 'Old Value',
+                            'new_value': 'New Value'
+                        }
+                    )
+                else:
+                    st.info("No change history available.")
+        else:
+            st.markdown("*💡 Tip: Changes to this game will be tracked in the change history.*")
+        
         st.markdown("---")
         st.markdown("### Step 2: Edit Game")
         
@@ -892,14 +973,112 @@ elif page == "✏️ Edit Game*":
                 cancel = st.form_submit_button("❌ Cancel")
             
             if submitted:
+                # Track all changes for audit trail
+                audit_entries = []
+                
+                # Check each field for changes
+                if new_game_date != selected_game['Game Date']:
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Game Date", 
+                        selected_game['Game Date'], 
+                        new_game_date
+                    ))
+                
+                if new_field != selected_game['Field']:
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Field", 
+                        selected_game['Field'], 
+                        new_field
+                    ))
+                
+                if new_time != selected_game['Time']:
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Time", 
+                        selected_game['Time'], 
+                        new_time
+                    ))
+                
+                if new_home != selected_game['Home']:
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Home Team", 
+                        selected_game['Home'], 
+                        new_home
+                    ))
+                
+                if new_away != selected_game['Away']:
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Away Team", 
+                        selected_game['Away'], 
+                        new_away
+                    ))
+                
+                if new_status != selected_game['Status']:
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Status", 
+                        selected_game['Status'], 
+                        new_status
+                    ))
+                
+                if new_comment != str(selected_game.get('Comment', '')):
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Comment", 
+                        selected_game.get('Comment', ''), 
+                        new_comment
+                    ))
+                
+                if new_original_date != str(selected_game.get('Original Date', '')):
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Original Date", 
+                        selected_game.get('Original Date', ''), 
+                        new_original_date
+                    ))
+                
                 # Recalculate Week and Daycode based on new game date
                 new_week, new_daycode = calculate_week_and_daycode(new_game_date)
                 
-                # Update the database - including recalculated Week and Daycode
+                # Track if Week or Daycode changed (due to date change)
+                if new_week != selected_game['Week']:
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Week (auto-calculated)", 
+                        selected_game['Week'], 
+                        new_week
+                    ))
+                
+                if new_daycode != selected_game['Daycode']:
+                    audit_entries.append(add_audit_entry(
+                        selected_game['Game #'], 
+                        "Daycode (auto-calculated)", 
+                        selected_game['Daycode'], 
+                        new_daycode
+                    ))
+                
+                # Get existing audit trail
                 conn = sqlite3.connect('wusa_schedule.db')
                 cursor = conn.cursor()
                 
-                # Build update query - now includes Week and Daycode which are auto-calculated
+                cursor.execute("SELECT game_audit_trail FROM games WHERE \"Game #\" = ?", (selected_game['Game #'],))
+                result = cursor.fetchone()
+                existing_audit = result[0] if result and result[0] else ""
+                
+                # Append new entries to audit trail (newline separated JSON entries)
+                if audit_entries:
+                    new_audit_trail = existing_audit
+                    if existing_audit:
+                        new_audit_trail += "\n"
+                    new_audit_trail += "\n".join(audit_entries)
+                else:
+                    new_audit_trail = existing_audit
+                
+                # Update the database - including recalculated Week and Daycode and audit trail
                 update_query = """
                     UPDATE games SET
                         "Game Date" = ?,
@@ -911,7 +1090,8 @@ elif page == "✏️ Edit Game*":
                         "Week" = ?,
                         "Daycode" = ?,
                         "Comment" = ?,
-                        "Original Date" = ?
+                        "Original Date" = ?,
+                        "game_audit_trail" = ?
                     WHERE "Game #" = ?
                 """
                 
@@ -926,6 +1106,7 @@ elif page == "✏️ Edit Game*":
                     new_daycode,
                     new_comment,
                     new_original_date,
+                    new_audit_trail,
                     selected_game['Game #']  # Use original Game # as identifier
                 ))
                 
@@ -935,7 +1116,11 @@ elif page == "✏️ Edit Game*":
                 # Clear cache to reload data
                 st.cache_data.clear()
                 
-                st.success(f"✅ Game #{selected_game['Game #']} updated successfully!")
+                if audit_entries:
+                    st.success(f"✅ Game #{selected_game['Game #']} updated successfully! Tracked {len(audit_entries)} change(s).")
+                else:
+                    st.info("ℹ️ No changes were made to the game.")
+                
                 st.info("🔄 Page will reload with updated data...")
                 st.rerun()
 
