@@ -1687,18 +1687,22 @@ elif page == "📝 Recent Changes*":
                 # Sort by datetime descending (most recent first)
                 changes_df = changes_df.sort_values('timestamp_dt', ascending=False).reset_index(drop=True)
                 
-                # Drop the temporary datetime column
-                changes_df = changes_df.drop('timestamp_dt', axis=1)
+                # Format timestamp for display in user's locale
+                # Use DatetimeColumn which automatically displays in user's browser timezone
                 
                 st.markdown(f"*Showing {len(all_changes)} changes across {len(edited_games_df)} games*")
                 
                 # Display the table
                 st.dataframe(
-                    changes_df,
+                    changes_df[['timestamp_dt', 'Game', 'Field Changed', 'Old Value', 'New Value']],
                     use_container_width=True,
                     hide_index=True,
                     column_config={
-                        'Last Updated': st.column_config.TextColumn('Last Updated', width='medium'),
+                        'timestamp_dt': st.column_config.DatetimeColumn(
+                            'Last Updated',
+                            format="YYYY-MM-DD HH:mm:ss",
+                            timezone='local'
+                        ),
                         'Game': st.column_config.TextColumn('Game', width='large'),
                         'Field Changed': st.column_config.TextColumn('Field Changed', width='medium'),
                         'Old Value': st.column_config.TextColumn('Old Value', width='medium'),
