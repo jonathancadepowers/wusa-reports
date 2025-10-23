@@ -50,6 +50,7 @@ page = st.sidebar.radio(
         "📋 Team vs Date Matrix",
         "📊 Division Summary",
         "📅 Teams by Day",
+        "🔍 Data Query Tool",
         "✉️ Request Change",
         "✏️ Edit Game*",
         "📋 View Requests*"
@@ -1015,6 +1016,107 @@ elif page == "📅 Teams by Day":
         f"teams_by_day_{selected_division}.csv",
         "text/csv"
     )
+
+elif page == "🔍 Data Query Tool":
+    st.title("🔍 Data Query Tool")
+    
+    st.markdown("""
+    **Run SQL queries against the schedule database.** This tool is read-only for safety.
+    
+    Available tables:
+    - `games` - All game information
+    - `schedule_requests` - Schedule change requests
+    """)
+    
+    # SQL query input
+    query = st.text_area(
+        "Enter your SQL query (SELECT only):",
+        height=150,
+        placeholder="SELECT * FROM games LIMIT 10;",
+        help="Only SELECT queries are allowed. INSERT, UPDATE, DELETE, DROP, etc. are blocked."
+    )
+    
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        run_button = st.button("▶️ Run Query", type="primary")
+    with col2:
+        if st.button("📋 Example Queries"):
+            st.session_state.show_examples = not st.session_state.get('show_examples', False)
+    
+    # Show example queries
+    if st.session_state.get('show_examples', False):
+        st.markdown("""
+        **Example Queries:**
+        
+        ```sql
+        -- Get all games for a specific team
+        SELECT * FROM games WHERE Home = 'Aliens' OR Away = 'Aliens';
+        
+        -- Count games by division
+        SELECT Division, COUNT(*) as game_count FROM games GROUP BY Division;
+        
+        -- Find games on a specific date
+        SELECT * FROM games WHERE "Game Date" = 'Monday, October 13, 2025';
+        
+        -- Get all games at a specific field
+        SELECT * FROM games WHERE Field = 'SC3';
+        
+        -- Count games by week
+        SELECT Week, COUNT(*) as games FROM games GROUP BY Week ORDER BY Week;
+        ```
+        """)
+    
+    if run_button and query.strip():
+        # Validate query is read-only
+        query_upper = query.strip().upper()
+        
+        # Check for dangerous operations
+        dangerous_keywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'ALTER', 'CREATE', 
+                              'TRUNCATE', 'REPLACE', 'MERGE', 'GRANT', 'REVOKE']
+        
+        is_safe = True
+        for keyword in dangerous_keywords:
+            if keyword in query_upper:
+                is_safe = False
+                st.error(f"❌ Query blocked: '{keyword}' operations are not allowed. Only SELECT queries are permitted.")
+                break
+        
+        if is_safe:
+            # Also check it starts with SELECT
+            if not query_upper.strip().startswith('SELECT'):
+                st.error("❌ Query must start with SELECT. Only read-only queries are allowed.")
+            else:
+                try:
+                    # Execute the query
+                    conn = sqlite3.connect('wusa_schedule.db')
+                    result_df = pd.read_sql(query, conn)
+                    conn.close()
+                    
+                    # Display results
+                    st.success(f"✅ Query executed successfully! Found {len(result_df)} rows.")
+                    
+                    # Show results
+                    st.dataframe(
+                        result_df,
+                        use_container_width=True,
+                        hide_index=True
+                    )
+                    
+                    # Download button
+                    csv = result_df.to_csv(index=False)
+                    st.download_button(
+                        "📥 Download Results as CSV",
+                        csv,
+                        "query_results.csv",
+                        "text/csv"
+                    )
+                    
+                except Exception as e:
+                    st.error(f"❌ Query error: {str(e)}")
+                    st.markdown("**Tips:**")
+                    st.markdown("- Check your SQL syntax")
+                    st.markdown("- Make sure table and column names are correct")
+                    st.markdown("- Use double quotes for column names with spaces: `\"Game Date\"`")
 
 elif page == "✉️ Request Change":
     st.title("✉️ Request Change")
