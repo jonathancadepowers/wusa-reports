@@ -68,7 +68,7 @@ if page == "📅 Full Schedule":
     with col3:
         selected_fields = st.multiselect("Field", sorted(df['Field'].unique()))
     
-    # Second row for team filter
+    # Second row for team filter and date range
     col4, col5, col6 = st.columns(3)
     with col4:
         # Get all unique teams (both home and away), filtering out NaN values
@@ -77,10 +77,7 @@ if page == "📅 Full Schedule":
         all_teams = sorted(set(list(home_teams) + list(away_teams)))
         
         selected_teams = st.multiselect("Team (Home or Away)", all_teams)
-    
-    # Third row for date range filter
-    col7, col8, col9 = st.columns(3)
-    with col7:
+    with col5:
         # Get min and max dates from the schedule
         min_date = df['Game Date Parsed'].min().date()
         max_date = df['Game Date Parsed'].max().date()
@@ -91,7 +88,7 @@ if page == "📅 Full Schedule":
             min_value=min_date,
             max_value=max_date
         )
-    with col8:
+    with col6:
         end_date = st.date_input(
             "End Date",
             value=max_date,
@@ -125,8 +122,6 @@ if page == "📅 Full Schedule":
     display_df = filtered_df.drop(columns=['Game Date Parsed'])
     
     # Display with editable Comment column
-    st.markdown("💡 **Tip:** You can edit the Comment column directly - changes are saved automatically!")
-    
     edited_df = st.data_editor(
         display_df,
         use_container_width=True,
@@ -134,6 +129,8 @@ if page == "📅 Full Schedule":
         disabled=[col for col in display_df.columns if col != 'Comment'],  # Only Comment is editable
         key="schedule_editor"
     )
+    
+    st.markdown("💡 **Tip:** You can edit the Comment column directly - changes are saved automatically! Only those with access to this page can view these comments.")
     
     # Check if any comments were edited
     if not edited_df.equals(display_df):
