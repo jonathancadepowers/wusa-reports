@@ -11,6 +11,20 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS to hide radio button for Admin separator
+st.markdown("""
+<style>
+    /* Hide radio button for Admin separator */
+    div[data-testid="stSidebar"] label:has(span:contains("─── Admin ───")) input[type="radio"] {
+        display: none;
+    }
+    div[data-testid="stSidebar"] label:has(span:contains("─── Admin ───")) {
+        pointer-events: none;
+        opacity: 0.7;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Load data (cached so it's fast)
 @st.cache_data
 def load_games():
