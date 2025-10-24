@@ -424,6 +424,16 @@ if page == "📅 Full Schedule":
     min_date = df['Game Date Parsed'].min().date()
     max_date = df['Game Date Parsed'].max().date()
 
+    # Initialize session state for filters if they don't exist
+    if 'filter_fields' not in st.session_state:
+        st.session_state.filter_fields = []
+    if 'filter_teams' not in st.session_state:
+        st.session_state.filter_teams = []
+    if 'filter_start_date' not in st.session_state:
+        st.session_state.filter_start_date = min_date
+    if 'filter_end_date' not in st.session_state:
+        st.session_state.filter_end_date = max_date
+
     # Clear All Filters button
     if st.button("🔄 Clear All Filters"):
         # Explicitly set widget states to default values
@@ -470,7 +480,6 @@ if page == "📅 Full Schedule":
     with col5:
         start_date = st.date_input(
             "Start Date",
-            value=min_date,
             min_value=min_date,
             max_value=max_date,
             key='filter_start_date'
@@ -478,7 +487,6 @@ if page == "📅 Full Schedule":
     with col6:
         end_date = st.date_input(
             "End Date",
-            value=max_date,
             min_value=min_date,
             max_value=max_date,
             key='filter_end_date'
