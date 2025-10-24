@@ -2169,13 +2169,10 @@ elif page == "📝 Recent Changes*":
 elif page == "⚙️ Settings*":
     st.title("⚙️ Settings")
 
-    st.markdown("Configure application settings and preferences.")
-
     st.markdown("---")
 
     # Email Notification Settings
     st.markdown("### 📧 Edit Game Notification Settings")
-    st.markdown("Configure email notifications sent when games are edited.")
 
     # Load current settings
     current_from = get_setting('email_from_address', '')
@@ -2187,7 +2184,7 @@ elif page == "⚙️ Settings*":
             "Email address that notifications will be sent from",
             value=current_from,
             placeholder="notifications@example.com",
-            help="This should match your SMTP username in most cases",
+            help="The email address that will appear in the 'From' field of notification emails. This should typically match your SMTP username. If left blank, the system will use your SMTP username from secrets.",
             label_visibility="collapsed"
         )
 
@@ -2196,7 +2193,7 @@ elif page == "⚙️ Settings*":
             "Comma-separated list of email addresses to receive notifications",
             value=current_to,
             placeholder="admin1@example.com, admin2@example.com",
-            help="Separate multiple addresses with commas",
+            help="Email addresses that will receive notifications when games are edited. Enter one or more addresses separated by commas (e.g., admin@example.com, manager@example.com). All listed addresses will receive a copy of each notification.",
             label_visibility="collapsed"
         )
 
@@ -2232,34 +2229,3 @@ elif page == "⚙️ Settings*":
 
                 st.success("✅ Settings saved successfully!")
                 st.rerun()
-
-    # Display current configuration
-    st.markdown("---")
-    st.markdown("### 📋 Current Configuration")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**From Address:**")
-        st.code(current_from if current_from else "(not set)")
-
-    with col2:
-        st.markdown("**To Addresses:**")
-        to_list = [email.strip() for email in current_to.split(',') if email.strip()]
-        for email in to_list:
-            st.code(email)
-
-    # Additional help text
-    st.markdown("---")
-    st.markdown("### ℹ️ About Email Settings")
-    st.markdown("""
-    **From Address:** This is the email address that will appear in the "From" field of notification emails.
-    - This should typically match your SMTP username
-    - If left blank, the system will use your SMTP username from secrets
-
-    **To Addresses:** These are the email addresses that will receive notifications when games are edited.
-    - Enter one or more addresses separated by commas
-    - Example: `admin@example.com, manager@example.com`
-    - All listed addresses will receive a copy of each notification
-
-    **Note:** Email functionality requires SMTP credentials to be configured in Streamlit secrets.
-    """)
