@@ -544,10 +544,12 @@ if page == "📅 Full Schedule":
 
 elif page == "🏟️ Games by Field":
     st.title("🏟️ Games by Field")
-    
-    # Get unique dates from the schedule
-    unique_dates = sorted(df['Game Date'].unique())
-    
+
+    # Get unique dates from the schedule in chronological order
+    # Sort by the parsed date column to get proper chronological order
+    date_df_sorted = df[['Game Date', 'Game Date Parsed']].drop_duplicates().sort_values('Game Date Parsed')
+    unique_dates = date_df_sorted['Game Date'].tolist()
+
     # Date selector
     selected_date = st.selectbox("Date", unique_dates)
     
