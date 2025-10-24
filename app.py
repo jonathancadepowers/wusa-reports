@@ -2169,8 +2169,6 @@ elif page == "📝 Recent Changes*":
 elif page == "⚙️ Settings*":
     st.title("⚙️ Settings")
 
-    st.markdown("---")
-
     # Email Notification Settings
     st.markdown("### 📧 Edit Game Notification Settings")
 
@@ -2185,6 +2183,8 @@ elif page == "⚙️ Settings*":
     current_to = get_setting('email_to_addresses', 'jpowers@gmail.com')
 
     with st.form("email_settings_form"):
+        st.info("When a game is edited, an email is sent from/to the addresses defined below.")
+
         from_address = st.text_input(
             "From Address",
             value=current_from,
@@ -2199,25 +2199,47 @@ elif page == "⚙️ Settings*":
             help="Email addresses that will receive notifications when games are edited. Enter one or more addresses separated by commas (e.g., admin@example.com, manager@example.com). All listed addresses will receive a copy of each notification."
         )
 
+        st.markdown("---")
+
         # Submit button
-        col1, col2 = st.columns([1, 5])
-        with col1:
-            submitted = st.form_submit_button("💾 Save Settings", type="primary")
+        submitted = st.form_submit_button("💾 Save Settings", type="primary")
 
         if submitted:
             # Validate email addresses
             errors = []
 
+            # Helper function for better email validation
+            def is_valid_email(email):
+                email = email.strip()
+                if not email:
+                    return False
+                # Basic email validation
+                if '@' not in email or '.' not in email.split('@')[1]:
+                    return False
+                # Check for invalid characters at start/end
+                if email.startswith((',', '.', '@')) or email.endswith((',', '.', '@')):
+                    return False
+                return True
+
             # Validate from address
-            if from_address and '@' not in from_address:
+            if from_address and not is_valid_email(from_address):
                 errors.append("From Address must be a valid email address")
 
             # Validate to addresses
             if to_addresses:
+                # Check for trailing comma
+                if to_addresses.strip().endswith(','):
+                    errors.append("To Addresses cannot end with a comma. Please add an email address after the comma or remove it.")
+
                 to_list = [email.strip() for email in to_addresses.split(',')]
                 for email in to_list:
-                    if email and '@' not in email:
+                    if email and not is_valid_email(email):
                         errors.append(f"Invalid email address: {email}")
+
+                # Check if all emails are empty (just commas)
+                valid_emails = [email for email in to_list if email]
+                if not valid_emails:
+                    errors.append("To Addresses must contain at least one valid email address")
             else:
                 errors.append("To Addresses cannot be empty")
 
@@ -2225,7 +2247,7 @@ elif page == "⚙️ Settings*":
                 for error in errors:
                     st.error(f"❌ {error}")
             else:
-                # Save settings
+                # Save settings (strip any trailing/leading whitespace)
                 set_setting('email_from_address', from_address.strip())
                 set_setting('email_to_addresses', to_addresses.strip())
 
