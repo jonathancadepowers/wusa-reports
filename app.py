@@ -2179,22 +2179,18 @@ elif page == "⚙️ Settings*":
     current_to = get_setting('email_to_addresses', 'jpowers@gmail.com')
 
     with st.form("email_settings_form"):
-        st.markdown("**From Address**")
         from_address = st.text_input(
-            "Email address that notifications will be sent from",
+            "From Address",
             value=current_from,
             placeholder="notifications@example.com",
-            help="The email address that will appear in the 'From' field of notification emails. This should typically match your SMTP username. If left blank, the system will use your SMTP username from secrets.",
-            label_visibility="collapsed"
+            help="The email address that will appear in the 'From' field of notification emails. This should typically match your SMTP username. If left blank, the system will use your SMTP username from secrets."
         )
 
-        st.markdown("**To Addresses**")
         to_addresses = st.text_input(
-            "Comma-separated list of email addresses to receive notifications",
+            "To Addresses",
             value=current_to,
             placeholder="admin1@example.com, admin2@example.com",
-            help="Email addresses that will receive notifications when games are edited. Enter one or more addresses separated by commas (e.g., admin@example.com, manager@example.com). All listed addresses will receive a copy of each notification.",
-            label_visibility="collapsed"
+            help="Email addresses that will receive notifications when games are edited. Enter one or more addresses separated by commas (e.g., admin@example.com, manager@example.com). All listed addresses will receive a copy of each notification."
         )
 
         # Submit button
