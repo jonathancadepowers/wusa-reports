@@ -106,18 +106,27 @@ def send_admin_notification_email(game_info, changes_list):
         smtp_port = st.secrets.get("SMTP_PORT", 587)
         smtp_username = st.secrets.get("SMTP_USERNAME", "")
         smtp_password = st.secrets.get("SMTP_PASSWORD", "")
-        from_email = st.secrets.get("FROM_EMAIL", smtp_username)
-        admin_email = "jpowers@gmail.com"
+
+        # Get from/to addresses from settings (with fallbacks)
+        from_email = get_setting('email_from_address', '')
+        if not from_email:
+            from_email = st.secrets.get("FROM_EMAIL", smtp_username)
+
+        to_addresses = get_setting('email_to_addresses', 'jpowers@gmail.com')
 
         # Skip if credentials not configured
         if not smtp_username or not smtp_password:
             return False, "Email credentials not configured"
 
+        # Skip if no recipient addresses
+        if not to_addresses:
+            return False, "No recipient addresses configured"
+
         # Create message
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f'WUSA Schedule - Game #{game_info["Game #"]} Updated'
         msg['From'] = from_email
-        msg['To'] = admin_email
+        msg['To'] = to_addresses
 
         # Build changes table HTML
         changes_html = ""
@@ -233,8 +242,68 @@ def ensure_audit_trail_column():
     except Exception as e:
         print(f"Error ensuring audit trail columns: {e}")
 
-# Run migration on app startup
+# Database migration - create settings table if it doesn't exist
+def ensure_settings_table():
+    """Ensure the settings table exists in the database"""
+    try:
+        conn = sqlite3.connect('wusa_schedule.db')
+        cursor = conn.cursor()
+
+        # Create settings table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
+
+        # Add default values if they don't exist
+        cursor.execute("SELECT key FROM settings WHERE key = 'email_from_address'")
+        if cursor.fetchone() is None:
+            cursor.execute("INSERT INTO settings (key, value) VALUES ('email_from_address', '')")
+
+        cursor.execute("SELECT key FROM settings WHERE key = 'email_to_addresses'")
+        if cursor.fetchone() is None:
+            cursor.execute("INSERT INTO settings (key, value) VALUES ('email_to_addresses', 'jpowers@gmail.com')")
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error ensuring settings table: {e}")
+
+# Helper functions for settings
+def get_setting(key, default=''):
+    """Get a setting value from the database"""
+    try:
+        conn = sqlite3.connect('wusa_schedule.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result else default
+    except Exception as e:
+        print(f"Error getting setting {key}: {e}")
+        return default
+
+def set_setting(key, value):
+    """Set a setting value in the database"""
+    try:
+        conn = sqlite3.connect('wusa_schedule.db')
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO settings (key, value)
+            VALUES (?, ?)
+        """, (key, value))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error setting {key}: {e}")
+        return False
+
+# Run migrations on app startup
 ensure_audit_trail_column()
+ensure_settings_table()
 
 # Helper function to add audit trail entry
 def add_audit_entry(game_number, field_name, old_value, new_value):
@@ -300,8 +369,8 @@ st.sidebar.title("Fall 2025 Schedule")
 page = st.sidebar.radio(
     "",
     [
-        "📅 Full Schedule", 
-        "🏟️ Games by Field", 
+        "📅 Full Schedule",
+        "🏟️ Games by Field",
         "👥 Team Schedules",
         "📋 Team vs Date Matrix",
         "📊 Division Summary",
@@ -309,7 +378,8 @@ page = st.sidebar.radio(
         "📆 Monthly Calendar",
         "🔍 Data Query Tool*",
         "✏️ Edit Game*",
-        "📝 Recent Changes*"
+        "📝 Recent Changes*",
+        "⚙️ Settings*"
     ]
 )
 
@@ -2095,3 +2165,101 @@ elif page == "📝 Recent Changes*":
                     },
                     height=600
                 )
+
+elif page == "⚙️ Settings*":
+    st.title("⚙️ Settings")
+
+    st.markdown("Configure application settings and preferences.")
+
+    st.markdown("---")
+
+    # Email Notification Settings
+    st.markdown("### 📧 Edit Game Notification Settings")
+    st.markdown("Configure email notifications sent when games are edited.")
+
+    # Load current settings
+    current_from = get_setting('email_from_address', '')
+    current_to = get_setting('email_to_addresses', 'jpowers@gmail.com')
+
+    with st.form("email_settings_form"):
+        st.markdown("**From Address**")
+        from_address = st.text_input(
+            "Email address that notifications will be sent from",
+            value=current_from,
+            placeholder="notifications@example.com",
+            help="This should match your SMTP username in most cases",
+            label_visibility="collapsed"
+        )
+
+        st.markdown("**To Addresses**")
+        to_addresses = st.text_input(
+            "Comma-separated list of email addresses to receive notifications",
+            value=current_to,
+            placeholder="admin1@example.com, admin2@example.com",
+            help="Separate multiple addresses with commas",
+            label_visibility="collapsed"
+        )
+
+        # Submit button
+        col1, col2 = st.columns([1, 5])
+        with col1:
+            submitted = st.form_submit_button("💾 Save Settings", type="primary")
+
+        if submitted:
+            # Validate email addresses
+            errors = []
+
+            # Validate from address
+            if from_address and '@' not in from_address:
+                errors.append("From Address must be a valid email address")
+
+            # Validate to addresses
+            if to_addresses:
+                to_list = [email.strip() for email in to_addresses.split(',')]
+                for email in to_list:
+                    if email and '@' not in email:
+                        errors.append(f"Invalid email address: {email}")
+            else:
+                errors.append("To Addresses cannot be empty")
+
+            if errors:
+                for error in errors:
+                    st.error(f"❌ {error}")
+            else:
+                # Save settings
+                set_setting('email_from_address', from_address.strip())
+                set_setting('email_to_addresses', to_addresses.strip())
+
+                st.success("✅ Settings saved successfully!")
+                st.rerun()
+
+    # Display current configuration
+    st.markdown("---")
+    st.markdown("### 📋 Current Configuration")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**From Address:**")
+        st.code(current_from if current_from else "(not set)")
+
+    with col2:
+        st.markdown("**To Addresses:**")
+        to_list = [email.strip() for email in current_to.split(',') if email.strip()]
+        for email in to_list:
+            st.code(email)
+
+    # Additional help text
+    st.markdown("---")
+    st.markdown("### ℹ️ About Email Settings")
+    st.markdown("""
+    **From Address:** This is the email address that will appear in the "From" field of notification emails.
+    - This should typically match your SMTP username
+    - If left blank, the system will use your SMTP username from secrets
+
+    **To Addresses:** These are the email addresses that will receive notifications when games are edited.
+    - Enter one or more addresses separated by commas
+    - Example: `admin@example.com, manager@example.com`
+    - All listed addresses will receive a copy of each notification
+
+    **Note:** Email functionality requires SMTP credentials to be configured in Streamlit secrets.
+    """)
