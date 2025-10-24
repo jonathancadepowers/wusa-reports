@@ -426,6 +426,11 @@ st.sidebar.success(f"**Games Remaining:** {games_remaining}")
 ADMIN_PASSWORD = "wusarocks"
 ADMIN_PAGES = ["🔍 Data Query Tool*", "✏️ Edit Game*", "📝 Recent Changes*", "⚙️ Settings*"]
 
+# Force authentication reset for existing sessions (one-time migration)
+if 'auth_version' not in st.session_state:
+    st.session_state.admin_authenticated = False
+    st.session_state.auth_version = 1
+
 def check_admin_access():
     """Check if user has authenticated for admin access"""
     if 'admin_authenticated' not in st.session_state:
