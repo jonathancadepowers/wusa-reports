@@ -419,24 +419,54 @@ st.sidebar.success(f"**Games Remaining:** {games_remaining}")
 # Main content
 if page == "📅 Full Schedule":
     st.title("📅 Full Schedule")
-    
+
+    # Clear All Filters button
+    if st.button("🔄 Clear All Filters"):
+        # Set flag to clear filters
+        st.session_state.clear_filters = True
+        st.rerun()
+
+    # Check if we should clear filters
+    if st.session_state.get('clear_filters', False):
+        # Reset to defaults
+        default_divisions = sort_divisions(df['Division'].unique())
+        default_weeks = sorted(df['Week'].unique())
+        default_fields = []
+        default_teams = []
+        min_date = df['Game Date Parsed'].min().date()
+        max_date = df['Game Date Parsed'].max().date()
+        default_start_date = min_date
+        default_end_date = max_date
+        # Clear the flag
+        st.session_state.clear_filters = False
+    else:
+        # Use current values or defaults
+        default_divisions = sort_divisions(df['Division'].unique())
+        default_weeks = sorted(df['Week'].unique())
+        default_fields = []
+        default_teams = []
+        min_date = df['Game Date Parsed'].min().date()
+        max_date = df['Game Date Parsed'].max().date()
+        default_start_date = min_date
+        default_end_date = max_date
+
     # Filters - now in 3 rows
     col1, col2, col3 = st.columns(3)
     with col1:
         selected_divisions = st.multiselect(
-            "Division", 
-            sort_divisions(df['Division'].unique()), 
-            default=sort_divisions(df['Division'].unique())
+            "Division",
+            sort_divisions(df['Division'].unique()),
+            default=default_divisions
         )
     with col2:
         selected_weeks = st.multiselect(
-            "Week", 
-            sorted(df['Week'].unique()), 
-            default=sorted(df['Week'].unique())
+            "Week",
+            sorted(df['Week'].unique()),
+            default=default_weeks
         )
     with col3:
-        selected_fields = st.multiselect("Field", sorted(df['Field'].unique()))
-    
+        selected_fields = st.multiselect("Field", sorted(df['Field'].unique()), default=default_fields)
+
     # Second row for team filter and date range
     col4, col5, col6 = st.columns(3)
     with col4:
@@ -444,23 +474,19 @@ if page == "📅 Full Schedule":
         home_teams = df['Home'].dropna().unique()
         away_teams = df['Away'].dropna().unique()
         all_teams = sorted(set(list(home_teams) + list(away_teams)))
-        
-        selected_teams = st.multiselect("Team (Home or Away)", all_teams)
+
+        selected_teams = st.multiselect("Team (Home or Away)", all_teams, default=default_teams)
     with col5:
-        # Get min and max dates from the schedule
-        min_date = df['Game Date Parsed'].min().date()
-        max_date = df['Game Date Parsed'].max().date()
-        
         start_date = st.date_input(
             "Start Date",
-            value=min_date,
+            value=default_start_date,
             min_value=min_date,
             max_value=max_date
         )
     with col6:
         end_date = st.date_input(
             "End Date",
-            value=max_date,
+            value=default_end_date,
             min_value=min_date,
             max_value=max_date
         )
