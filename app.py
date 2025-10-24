@@ -2179,7 +2179,7 @@ elif page == "⚙️ Settings*":
     current_from = get_setting('email_from_address', '')
     current_to = get_setting('email_to_addresses', 'jpowers@gmail.com')
 
-    with st.form("email_settings_form"):
+    with st.form("email_settings_form", border=False):
         # Email Notification Settings Section
         with st.container(border=True):
             st.markdown("### 📧 Edit Game Notification Settings")
