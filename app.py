@@ -616,9 +616,11 @@ if page == "📅 Full Schedule":
         disabled=[col for col in display_df.columns if col != 'Comment'],  # Only Comment is editable
         column_config={
             'Game #': None,  # Hide Game # column
+            'Game': None,  # Hide Game column
             'Daycode': None,  # Hide Daycode column
             'Game Date': None,  # Hide Game Date column
-            'Division': None  # Hide Division column
+            'Division': None,  # Hide Division column
+            'Div': None  # Hide Div column
         },
         key="schedule_editor"
     )
