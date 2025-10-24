@@ -266,6 +266,10 @@ def ensure_settings_table():
         if cursor.fetchone() is None:
             cursor.execute("INSERT INTO settings (key, value) VALUES ('email_to_addresses', 'jpowers@gmail.com')")
 
+        cursor.execute("SELECT key FROM settings WHERE key = 'admin_password'")
+        if cursor.fetchone() is None:
+            cursor.execute("INSERT INTO settings (key, value) VALUES ('admin_password', 'wusarocks')")
+
         conn.commit()
         conn.close()
     except Exception as e:
@@ -423,7 +427,6 @@ st.sidebar.info(f"**Total Games:** {total_games}")
 st.sidebar.success(f"**Games Remaining:** {games_remaining}")
 
 # Admin authentication
-ADMIN_PASSWORD = "wusarocks"
 ADMIN_PAGES = ["🔍 Data Query Tool*", "✏️ Edit Game*", "📝 Recent Changes*", "⚙️ Settings*"]
 
 # Force authentication reset for existing sessions (one-time migration)
@@ -447,7 +450,9 @@ def show_admin_login():
         submitted = st.form_submit_button("Login")
 
         if submitted:
-            if password == ADMIN_PASSWORD:
+            # Get current admin password from settings
+            admin_password = get_setting('admin_password', 'wusarocks')
+            if password == admin_password:
                 st.session_state.admin_authenticated = True
                 st.success("✅ Authentication successful!")
                 st.rerun()
@@ -2279,6 +2284,7 @@ elif page == "⚙️ Settings*":
     # Load current settings
     current_from = get_setting('email_from_address', '')
     current_to = get_setting('email_to_addresses', 'jpowers@gmail.com')
+    current_password = get_setting('admin_password', 'wusarocks')
 
     with st.form("email_settings_form", border=False):
         # Email Notification Settings Section
@@ -2298,6 +2304,18 @@ elif page == "⚙️ Settings*":
                 value=current_to,
                 placeholder="admin1@example.com, admin2@example.com",
                 help="Email addresses that will receive notifications when games are edited. Enter one or more addresses separated by commas (e.g., admin@example.com, manager@example.com). All listed addresses will receive a copy of each notification."
+            )
+
+        # Admin Password Settings Section
+        with st.container(border=True):
+            st.markdown("### 🔒 Admin Password Settings")
+            st.markdown("Set the password required to access admin pages (Data Query Tool, Edit Game, Recent Changes, and Settings).")
+
+            admin_password = st.text_input(
+                "Admin Password",
+                value=current_password,
+                type="password",
+                help="Password required to access admin pages. This password is shared by all administrators."
             )
 
         # Submit button outside the container
@@ -2342,6 +2360,12 @@ elif page == "⚙️ Settings*":
             else:
                 errors.append("To Addresses cannot be empty")
 
+            # Validate admin password
+            if not admin_password or len(admin_password.strip()) == 0:
+                errors.append("Admin Password cannot be empty")
+            elif len(admin_password.strip()) < 4:
+                errors.append("Admin Password must be at least 4 characters long")
+
             if errors:
                 for error in errors:
                     st.error(f"❌ {error}")
@@ -2349,6 +2373,7 @@ elif page == "⚙️ Settings*":
                 # Save settings (strip any trailing/leading whitespace)
                 set_setting('email_from_address', from_address.strip())
                 set_setting('email_to_addresses', to_addresses.strip())
+                set_setting('admin_password', admin_password.strip())
 
                 # Store success message in session state
                 st.session_state.settings_success_message = "✅ Settings saved successfully!"
