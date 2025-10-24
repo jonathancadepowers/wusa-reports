@@ -385,6 +385,12 @@ page = st.sidebar.radio(
 
 st.sidebar.markdown("*Admin Pages")
 
+# Admin logout button (show if authenticated)
+if st.session_state.get('admin_authenticated', False):
+    if st.sidebar.button("🔓 Logout (Admin)"):
+        st.session_state.admin_authenticated = False
+        st.rerun()
+
 # Calculate metrics
 total_games = len(df)
 
@@ -415,6 +421,39 @@ for _, game in df.iterrows():
 # Display metrics
 st.sidebar.info(f"**Total Games:** {total_games}")
 st.sidebar.success(f"**Games Remaining:** {games_remaining}")
+
+# Admin authentication
+ADMIN_PASSWORD = "wusarocks"
+ADMIN_PAGES = ["🔍 Data Query Tool*", "✏️ Edit Game*", "📝 Recent Changes*", "⚙️ Settings*"]
+
+def check_admin_access():
+    """Check if user has authenticated for admin access"""
+    if 'admin_authenticated' not in st.session_state:
+        st.session_state.admin_authenticated = False
+    return st.session_state.admin_authenticated
+
+def show_admin_login():
+    """Show admin login form"""
+    st.title("🔒 Admin Access Required")
+    st.markdown("This page requires admin authentication.")
+
+    with st.form("admin_login"):
+        password = st.text_input("Enter admin password:", type="password")
+        submitted = st.form_submit_button("Login")
+
+        if submitted:
+            if password == ADMIN_PASSWORD:
+                st.session_state.admin_authenticated = True
+                st.success("✅ Authentication successful!")
+                st.rerun()
+            else:
+                st.error("❌ Incorrect password. Please try again.")
+
+# Check if current page requires admin access
+if page in ADMIN_PAGES:
+    if not check_admin_access():
+        show_admin_login()
+        st.stop()  # Stop execution here if not authenticated
 
 # Main content
 if page == "📅 Full Schedule":
