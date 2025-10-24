@@ -85,6 +85,108 @@ def send_confirmation_email(recipient_email, request_id, team, game, reason):
     except Exception as e:
         return False, f"Error sending email: {str(e)}"
 
+def send_admin_notification_email(game_info, changes_list):
+    """
+    Send an email notification to admin when a game is edited.
+
+    Args:
+        game_info: Dictionary with game details (Game #, Division, Date, Time, Home, Away, Field)
+        changes_list: List of tuples (field_name, old_value, new_value)
+
+    Email credentials should be stored in Streamlit secrets:
+    - SMTP_SERVER
+    - SMTP_PORT
+    - SMTP_USERNAME
+    - SMTP_PASSWORD
+    - FROM_EMAIL
+    """
+    try:
+        # Get email settings from Streamlit secrets
+        smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
+        smtp_port = st.secrets.get("SMTP_PORT", 587)
+        smtp_username = st.secrets.get("SMTP_USERNAME", "")
+        smtp_password = st.secrets.get("SMTP_PASSWORD", "")
+        from_email = st.secrets.get("FROM_EMAIL", smtp_username)
+        admin_email = "jpowers@gmail.com"
+
+        # Skip if credentials not configured
+        if not smtp_username or not smtp_password:
+            return False, "Email credentials not configured"
+
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f'WUSA Schedule - Game #{game_info["Game #"]} Updated'
+        msg['From'] = from_email
+        msg['To'] = admin_email
+
+        # Build changes table HTML
+        changes_html = ""
+        for field_name, old_value, new_value in changes_list:
+            changes_html += f"""
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{field_name}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; color: #d73a49;">{old_value}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; color: #28a745;">{new_value}</td>
+                </tr>
+            """
+
+        # Create HTML email body
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 700px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #2c5282;">Game Schedule Update Notification</h2>
+
+                <p>A game has been updated in the WUSA Schedule Management System.</p>
+
+                <div style="background-color: #f7fafc; border-left: 4px solid #4299e1; padding: 15px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #2c5282;">Game Details:</h3>
+                    <p><strong>Game #:</strong> {game_info["Game #"]}</p>
+                    <p><strong>Division:</strong> {game_info["Division"]}</p>
+                    <p><strong>Date:</strong> {game_info["Game Date"]}</p>
+                    <p><strong>Time:</strong> {game_info["Time"]}</p>
+                    <p><strong>Teams:</strong> {game_info["Home"]} vs {game_info["Away"]}</p>
+                    <p><strong>Field:</strong> {game_info["Field"]}</p>
+                </div>
+
+                <h3 style="color: #2c5282;">Changes Made:</h3>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <thead>
+                        <tr style="background-color: #f0f2f6;">
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Field</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Old Value</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">New Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {changes_html}
+                    </tbody>
+                </table>
+
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+
+                <p style="color: #a0aec0; font-size: 12px;">
+                    This is an automated notification from the WUSA Schedule Management System.
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+
+        # Attach HTML body
+        msg.attach(MIMEText(html_body, 'html'))
+
+        # Send email
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            server.send_message(msg)
+
+        return True, "Admin notification sent successfully"
+
+    except Exception as e:
+        return False, f"Error sending admin notification: {str(e)}"
+
 # Page config
 st.set_page_config(
     page_title="WUSA Schedule Reports",
@@ -1236,73 +1338,82 @@ elif page == "✏️ Edit Game*":
                 # Convert Game # to Python int for database compatibility
                 game_num = int(selected_game['Game #'])
                 
-                # Track all changes for audit trail
+                # Track all changes for audit trail and email notification
                 audit_entries = []
-                
+                changes_for_email = []  # List of (field_name, old_value, new_value) tuples
+
                 # Check each field for changes
                 if new_game_date != selected_game['Game Date']:
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Game Date", 
-                        selected_game['Game Date'], 
+                        game_num,
+                        "Game Date",
+                        selected_game['Game Date'],
                         new_game_date
                     ))
+                    changes_for_email.append(("Game Date", selected_game['Game Date'], new_game_date))
                 
                 if new_field != selected_game['Field']:
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Field", 
-                        selected_game['Field'], 
+                        game_num,
+                        "Field",
+                        selected_game['Field'],
                         new_field
                     ))
-                
+                    changes_for_email.append(("Field", selected_game['Field'], new_field))
+
                 if new_time != selected_game['Time']:
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Time", 
-                        selected_game['Time'], 
+                        game_num,
+                        "Time",
+                        selected_game['Time'],
                         new_time
                     ))
-                
+                    changes_for_email.append(("Time", selected_game['Time'], new_time))
+
                 if new_home != selected_game['Home']:
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Home Team", 
-                        selected_game['Home'], 
+                        game_num,
+                        "Home Team",
+                        selected_game['Home'],
                         new_home
                     ))
-                
+                    changes_for_email.append(("Home Team", selected_game['Home'], new_home))
+
                 if new_away != selected_game['Away']:
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Away Team", 
-                        selected_game['Away'], 
+                        game_num,
+                        "Away Team",
+                        selected_game['Away'],
                         new_away
                     ))
-                
+                    changes_for_email.append(("Away Team", selected_game['Away'], new_away))
+
                 if new_status != selected_game['Status']:
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Status", 
-                        selected_game['Status'], 
+                        game_num,
+                        "Status",
+                        selected_game['Status'],
                         new_status
                     ))
-                
+                    changes_for_email.append(("Status", selected_game['Status'], new_status))
+
                 if new_comment != str(selected_game.get('Comment', '')):
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Comment", 
-                        selected_game.get('Comment', ''), 
+                        game_num,
+                        "Comment",
+                        selected_game.get('Comment', ''),
                         new_comment
                     ))
-                
+                    changes_for_email.append(("Comment", selected_game.get('Comment', ''), new_comment))
+
                 if new_original_date != str(selected_game.get('Original Date', '')):
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Original Date", 
-                        selected_game.get('Original Date', ''), 
+                        game_num,
+                        "Original Date",
+                        selected_game.get('Original Date', ''),
                         new_original_date
                     ))
+                    changes_for_email.append(("Original Date", selected_game.get('Original Date', ''), new_original_date))
                 
                 # Recalculate Week and Daycode based on new game date
                 new_week, new_daycode = calculate_week_and_daycode(new_game_date)
@@ -1310,19 +1421,21 @@ elif page == "✏️ Edit Game*":
                 # Track if Week or Daycode changed (due to date change)
                 if new_week != selected_game['Week']:
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Week (auto-calculated)", 
-                        selected_game['Week'], 
+                        game_num,
+                        "Week (auto-calculated)",
+                        selected_game['Week'],
                         new_week
                     ))
-                
+                    changes_for_email.append(("Week (auto-calculated)", selected_game['Week'], new_week))
+
                 if new_daycode != selected_game['Daycode']:
                     audit_entries.append(add_audit_entry(
-                        game_num, 
-                        "Daycode (auto-calculated)", 
-                        selected_game['Daycode'], 
+                        game_num,
+                        "Daycode (auto-calculated)",
+                        selected_game['Daycode'],
                         new_daycode
                     ))
+                    changes_for_email.append(("Daycode (auto-calculated)", selected_game['Daycode'], new_daycode))
                 
                 # Get existing audit trail
                 conn = sqlite3.connect('wusa_schedule.db')
@@ -1385,16 +1498,39 @@ elif page == "✏️ Edit Game*":
                     
                     conn.commit()
                     conn.close()
-                    
+
+                    # Send admin notification email if there were changes
+                    if changes_for_email:
+                        # Prepare game info for email
+                        game_info = {
+                            "Game #": game_num,
+                            "Division": selected_game['Division'],
+                            "Game Date": new_game_date,
+                            "Time": new_time,
+                            "Home": new_home,
+                            "Away": new_away,
+                            "Field": new_field
+                        }
+
+                        # Send email notification
+                        email_success, email_message = send_admin_notification_email(game_info, changes_for_email)
+
+                        if email_success:
+                            success_msg = "✅ Changes saved, audit log updated, and notification email sent."
+                        else:
+                            success_msg = f"✅ Changes saved and audit log updated. (Email notification failed: {email_message})"
+                    else:
+                        success_msg = "✅ No changes were made."
+
                     # Clear cache to reload data
                     st.cache_data.clear()
-                    
+
                     # Store success message in session state
-                    st.session_state.edit_success_message = "✅ Changes saved and audit log updated."
-                    
+                    st.session_state.edit_success_message = success_msg
+
                     st.session_state.just_saved = True
                     st.session_state.saved_game_number = game_num
-                    
+
                     # Reload the page to show updated data
                     st.rerun()
                         
