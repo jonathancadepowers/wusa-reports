@@ -420,22 +420,18 @@ st.sidebar.success(f"**Games Remaining:** {games_remaining}")
 if page == "📅 Full Schedule":
     st.title("📅 Full Schedule")
 
-    # Clear All Filters button
-    if st.button("🔄 Clear All Filters"):
-        # Clear widget states for filters that should be reset
-        if 'filter_fields' in st.session_state:
-            del st.session_state.filter_fields
-        if 'filter_teams' in st.session_state:
-            del st.session_state.filter_teams
-        if 'filter_start_date' in st.session_state:
-            del st.session_state.filter_start_date
-        if 'filter_end_date' in st.session_state:
-            del st.session_state.filter_end_date
-        st.rerun()
-
     # Get min and max dates from the schedule
     min_date = df['Game Date Parsed'].min().date()
     max_date = df['Game Date Parsed'].max().date()
+
+    # Clear All Filters button
+    if st.button("🔄 Clear All Filters"):
+        # Explicitly set widget states to default values
+        st.session_state.filter_fields = []
+        st.session_state.filter_teams = []
+        st.session_state.filter_start_date = min_date
+        st.session_state.filter_end_date = max_date
+        st.rerun()
 
     # Filters - now in 3 rows
     col1, col2, col3 = st.columns(3)
