@@ -2174,6 +2174,12 @@ elif page == "⚙️ Settings*":
     # Email Notification Settings
     st.markdown("### 📧 Edit Game Notification Settings")
 
+    # Show success message if it exists from previous save
+    if 'settings_success_message' in st.session_state:
+        st.success(st.session_state.settings_success_message)
+        # Clear the message so it doesn't show again
+        del st.session_state.settings_success_message
+
     # Load current settings
     current_from = get_setting('email_from_address', '')
     current_to = get_setting('email_to_addresses', 'jpowers@gmail.com')
@@ -2223,5 +2229,6 @@ elif page == "⚙️ Settings*":
                 set_setting('email_from_address', from_address.strip())
                 set_setting('email_to_addresses', to_addresses.strip())
 
-                st.success("✅ Settings saved successfully!")
+                # Store success message in session state
+                st.session_state.settings_success_message = "✅ Settings saved successfully!"
                 st.rerun()
