@@ -2183,7 +2183,7 @@ elif page == "⚙️ Settings*":
     current_to = get_setting('email_to_addresses', 'jpowers@gmail.com')
 
     with st.form("email_settings_form"):
-        st.info("When a game is edited, an email is sent from/to the addresses defined below.")
+        st.markdown("When a game is edited, an email is sent from/to the addresses defined below.")
 
         from_address = st.text_input(
             "From Address",
