@@ -422,33 +422,20 @@ if page == "📅 Full Schedule":
 
     # Clear All Filters button
     if st.button("🔄 Clear All Filters"):
-        # Set flag to clear filters
-        st.session_state.clear_filters = True
+        # Clear widget states for filters that should be reset
+        if 'filter_fields' in st.session_state:
+            del st.session_state.filter_fields
+        if 'filter_teams' in st.session_state:
+            del st.session_state.filter_teams
+        if 'filter_start_date' in st.session_state:
+            del st.session_state.filter_start_date
+        if 'filter_end_date' in st.session_state:
+            del st.session_state.filter_end_date
         st.rerun()
 
-    # Check if we should clear filters
-    if st.session_state.get('clear_filters', False):
-        # Reset to defaults
-        default_divisions = sort_divisions(df['Division'].unique())
-        default_weeks = sorted(df['Week'].unique())
-        default_fields = []
-        default_teams = []
-        min_date = df['Game Date Parsed'].min().date()
-        max_date = df['Game Date Parsed'].max().date()
-        default_start_date = min_date
-        default_end_date = max_date
-        # Clear the flag
-        st.session_state.clear_filters = False
-    else:
-        # Use current values or defaults
-        default_divisions = sort_divisions(df['Division'].unique())
-        default_weeks = sorted(df['Week'].unique())
-        default_fields = []
-        default_teams = []
-        min_date = df['Game Date Parsed'].min().date()
-        max_date = df['Game Date Parsed'].max().date()
-        default_start_date = min_date
-        default_end_date = max_date
+    # Get min and max dates from the schedule
+    min_date = df['Game Date Parsed'].min().date()
+    max_date = df['Game Date Parsed'].max().date()
 
     # Filters - now in 3 rows
     col1, col2, col3 = st.columns(3)
@@ -456,16 +443,20 @@ if page == "📅 Full Schedule":
         selected_divisions = st.multiselect(
             "Division",
             sort_divisions(df['Division'].unique()),
-            default=default_divisions
+            default=sort_divisions(df['Division'].unique())
         )
     with col2:
         selected_weeks = st.multiselect(
             "Week",
             sorted(df['Week'].unique()),
-            default=default_weeks
+            default=sorted(df['Week'].unique())
         )
     with col3:
-        selected_fields = st.multiselect("Field", sorted(df['Field'].unique()), default=default_fields)
+        selected_fields = st.multiselect(
+            "Field",
+            sorted(df['Field'].unique()),
+            key='filter_fields'
+        )
 
     # Second row for team filter and date range
     col4, col5, col6 = st.columns(3)
@@ -475,20 +466,26 @@ if page == "📅 Full Schedule":
         away_teams = df['Away'].dropna().unique()
         all_teams = sorted(set(list(home_teams) + list(away_teams)))
 
-        selected_teams = st.multiselect("Team (Home or Away)", all_teams, default=default_teams)
+        selected_teams = st.multiselect(
+            "Team (Home or Away)",
+            all_teams,
+            key='filter_teams'
+        )
     with col5:
         start_date = st.date_input(
             "Start Date",
-            value=default_start_date,
+            value=min_date,
             min_value=min_date,
-            max_value=max_date
+            max_value=max_date,
+            key='filter_start_date'
         )
     with col6:
         end_date = st.date_input(
             "End Date",
-            value=default_end_date,
+            value=max_date,
             min_value=min_date,
-            max_value=max_date
+            max_value=max_date,
+            key='filter_end_date'
         )
     
     # Filter data
