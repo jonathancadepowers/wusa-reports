@@ -484,6 +484,8 @@ if page == "📅 Full Schedule":
         st.session_state.filter_teams = []
     if 'filter_status' not in st.session_state:
         st.session_state.filter_status = []
+    if 'filter_comment' not in st.session_state:
+        st.session_state.filter_comment = ''
     if 'filter_start_date' not in st.session_state:
         st.session_state.filter_start_date = min_date
     if 'filter_end_date' not in st.session_state:
@@ -497,6 +499,7 @@ if page == "📅 Full Schedule":
         st.session_state.filter_fields = []
         st.session_state.filter_teams = []
         st.session_state.filter_status = []
+        st.session_state.filter_comment = ''
         st.session_state.filter_start_date = min_date
         st.session_state.filter_end_date = max_date
         st.rerun()
@@ -550,13 +553,19 @@ if page == "📅 Full Schedule":
             key='filter_end_date'
         )
 
-    # Third row for status filter
+    # Third row for status and comment filters
     col7, col8, col9 = st.columns(3)
     with col7:
         selected_status = st.multiselect(
             "Status",
             sorted(df['Status'].unique()),
             key='filter_status'
+        )
+    with col8:
+        comment_filter = st.text_input(
+            "Comment (contains)",
+            key='filter_comment',
+            placeholder="Search comments..."
         )
 
     # Filter data - only apply filters if values are selected
@@ -581,6 +590,13 @@ if page == "📅 Full Schedule":
     if selected_status:
         filtered_df = filtered_df[filtered_df['Status'].isin(selected_status)]
 
+    # Apply comment contains filter
+    if comment_filter:
+        # Filter for rows where Comment contains the search string (case-insensitive)
+        filtered_df = filtered_df[
+            filtered_df['Comment'].fillna('').str.contains(comment_filter, case=False, na=False)
+        ]
+
     # Apply date range filter
     filtered_df = filtered_df[
         (filtered_df['Game Date Parsed'].dt.date >= start_date) &
@@ -591,7 +607,7 @@ if page == "📅 Full Schedule":
     columns_to_drop = ['Game Date Parsed', 'Original Date', 'game_audit_trail', 'last_updated']
     display_df = filtered_df.drop(columns=[col for col in columns_to_drop if col in filtered_df.columns])
 
-    # Display with editable Comment column, hiding Game # and Daycode
+    # Display with editable Comment column, hiding specified columns
     edited_df = st.data_editor(
         display_df,
         use_container_width=True,
@@ -600,7 +616,9 @@ if page == "📅 Full Schedule":
         disabled=[col for col in display_df.columns if col != 'Comment'],  # Only Comment is editable
         column_config={
             'Game #': None,  # Hide Game # column
-            'Daycode': None  # Hide Daycode column
+            'Daycode': None,  # Hide Daycode column
+            'Game Date': None,  # Hide Game Date column
+            'Division': None  # Hide Division column
         },
         key="schedule_editor"
     )
