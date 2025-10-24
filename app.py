@@ -2309,13 +2309,12 @@ elif page == "⚙️ Settings*":
         # Admin Password Settings Section
         with st.container(border=True):
             st.markdown("### 🔒 Admin Password Settings")
-            st.markdown("Set the password required to access admin pages (Data Query Tool, Edit Game, Recent Changes, and Settings).")
+            st.markdown("Set the password required to access admin pages.")
 
             admin_password = st.text_input(
                 "Admin Password",
                 value=current_password,
-                type="password",
-                help="Password required to access admin pages. This password is shared by all administrators."
+                type="password"
             )
 
         # Submit button outside the container
