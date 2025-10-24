@@ -2169,9 +2169,6 @@ elif page == "📝 Recent Changes*":
 elif page == "⚙️ Settings*":
     st.title("⚙️ Settings")
 
-    # Email Notification Settings
-    st.markdown("### 📧 Edit Game Notification Settings")
-
     # Show success message if it exists from previous save
     if 'settings_success_message' in st.session_state:
         st.success(st.session_state.settings_success_message)
@@ -2183,25 +2180,26 @@ elif page == "⚙️ Settings*":
     current_to = get_setting('email_to_addresses', 'jpowers@gmail.com')
 
     with st.form("email_settings_form"):
-        st.markdown("When a game is edited, an email is sent from/to the addresses defined below.")
+        # Email Notification Settings Section
+        with st.container(border=True):
+            st.markdown("### 📧 Edit Game Notification Settings")
+            st.markdown("When a game is edited, an email is sent from/to the addresses defined below.")
 
-        from_address = st.text_input(
-            "From Address",
-            value=current_from,
-            placeholder="notifications@example.com",
-            help="The email address that will appear in the 'From' field of notification emails. This should typically match your SMTP username. If left blank, the system will use your SMTP username from secrets."
-        )
+            from_address = st.text_input(
+                "From Address",
+                value=current_from,
+                placeholder="notifications@example.com",
+                help="The email address that will appear in the 'From' field of notification emails. This should typically match your SMTP username. If left blank, the system will use your SMTP username from secrets."
+            )
 
-        to_addresses = st.text_input(
-            "To Addresses",
-            value=current_to,
-            placeholder="admin1@example.com, admin2@example.com",
-            help="Email addresses that will receive notifications when games are edited. Enter one or more addresses separated by commas (e.g., admin@example.com, manager@example.com). All listed addresses will receive a copy of each notification."
-        )
+            to_addresses = st.text_input(
+                "To Addresses",
+                value=current_to,
+                placeholder="admin1@example.com, admin2@example.com",
+                help="Email addresses that will receive notifications when games are edited. Enter one or more addresses separated by commas (e.g., admin@example.com, manager@example.com). All listed addresses will receive a copy of each notification."
+            )
 
-        st.markdown("---")
-
-        # Submit button
+        # Submit button outside the container
         submitted = st.form_submit_button("💾 Save Settings", type="primary")
 
         if submitted:
