@@ -424,7 +424,11 @@ if page == "📅 Full Schedule":
     min_date = df['Game Date Parsed'].min().date()
     max_date = df['Game Date Parsed'].max().date()
 
-    # Initialize session state for filters if they don't exist
+    # Initialize session state for filters if they don't exist (all empty on first load)
+    if 'filter_divisions' not in st.session_state:
+        st.session_state.filter_divisions = []
+    if 'filter_weeks' not in st.session_state:
+        st.session_state.filter_weeks = []
     if 'filter_fields' not in st.session_state:
         st.session_state.filter_fields = []
     if 'filter_teams' not in st.session_state:
@@ -436,7 +440,9 @@ if page == "📅 Full Schedule":
 
     # Clear All Filters button
     if st.button("🔄 Clear All Filters"):
-        # Explicitly set widget states to default values
+        # Explicitly set all widget states to empty/default values
+        st.session_state.filter_divisions = []
+        st.session_state.filter_weeks = []
         st.session_state.filter_fields = []
         st.session_state.filter_teams = []
         st.session_state.filter_start_date = min_date
@@ -449,13 +455,13 @@ if page == "📅 Full Schedule":
         selected_divisions = st.multiselect(
             "Division",
             sort_divisions(df['Division'].unique()),
-            default=sort_divisions(df['Division'].unique())
+            key='filter_divisions'
         )
     with col2:
         selected_weeks = st.multiselect(
             "Week",
             sorted(df['Week'].unique()),
-            default=sorted(df['Week'].unique())
+            key='filter_weeks'
         )
     with col3:
         selected_fields = st.multiselect(
@@ -491,23 +497,26 @@ if page == "📅 Full Schedule":
             max_value=max_date,
             key='filter_end_date'
         )
-    
-    # Filter data
-    filtered_df = df[
-        df['Division'].isin(selected_divisions) & 
-        df['Week'].isin(selected_weeks)
-    ]
-    
+
+    # Filter data - only apply filters if values are selected
+    filtered_df = df.copy()
+
+    if selected_divisions:
+        filtered_df = filtered_df[filtered_df['Division'].isin(selected_divisions)]
+
+    if selected_weeks:
+        filtered_df = filtered_df[filtered_df['Week'].isin(selected_weeks)]
+
     if selected_fields:
         filtered_df = filtered_df[filtered_df['Field'].isin(selected_fields)]
-    
+
     if selected_teams:
         # Filter to games where the selected team is either home or away
         filtered_df = filtered_df[
-            filtered_df['Home'].isin(selected_teams) | 
+            filtered_df['Home'].isin(selected_teams) |
             filtered_df['Away'].isin(selected_teams)
         ]
-    
+
     # Apply date range filter
     filtered_df = filtered_df[
         (filtered_df['Game Date Parsed'].dt.date >= start_date) &
