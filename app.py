@@ -881,7 +881,7 @@ elif page == "🏟️ Master Field View":
     hide_past = st.checkbox("Hide Days in the Past", value=False)
 
     # Add toggle to highlight multi-division fields
-    highlight_multi_division = st.checkbox("Highlight when two different divisions play on the same field on the same day", value=False)
+    highlight_multi_division = st.checkbox("Highlight When Two Different Divisions Play on the Same Field on the Same Day", value=False)
 
     # Get unique dates from the schedule in chronological order
     date_df_sorted = df[['Game Date', 'Game Date Parsed']].drop_duplicates().sort_values('Game Date Parsed')
@@ -1150,7 +1150,7 @@ elif page == "🏟️ Master Field View":
     html += "</tbody></table>"
 
     # Display tip above table
-    st.info("💡 **Tip:** Mouse over a cell for game info.")
+    st.markdown("💡 **Tip:** Mouse over a cell for game info.")
 
     st.markdown(html, unsafe_allow_html=True)
 
