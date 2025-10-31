@@ -1118,6 +1118,9 @@ elif page == "🏟️ Master Field View":
 
     html += "</tbody></table>"
 
+    # Display tip above table
+    st.info("💡 **Tip:** Mouse over a cell for game info.")
+
     st.markdown(html, unsafe_allow_html=True)
 
 elif page == "👥 Team Schedules":
