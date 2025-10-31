@@ -876,208 +876,223 @@ elif page == "🏟️ Games by Field":
 
 elif page == "🏟️ Games by Field (Master View)":
     st.title("🏟️ Games by Field (Master View)")
-    st.markdown("This report shows all games for the entire season grouped by date.")
+    st.markdown("One comprehensive view of all games for the entire season.")
 
     # Get unique dates from the schedule in chronological order
     date_df_sorted = df[['Game Date', 'Game Date Parsed']].drop_duplicates().sort_values('Game Date Parsed')
     unique_dates = date_df_sorted['Game Date'].tolist()
 
-    # Track if we should show expanders as expanded by default
-    # Show first few dates expanded, rest collapsed
-    dates_to_expand = 3
+    # Get all unique fields across the entire season
+    all_fields = sorted(df['Field'].unique())
 
-    # Iterate through all dates
-    for idx, selected_date in enumerate(unique_dates):
-        # Filter games for this date
+    # Build master data structure: list of (date, time, field_counts) for each date/time combination
+    master_data = []
+    game_details_master = {}  # Key: (date, time, field) -> list of game info
+
+    for selected_date in unique_dates:
         date_df = df[df['Game Date'] == selected_date].copy()
 
         if len(date_df) == 0:
             continue
 
-        # Count total games for this date
-        game_count = len(date_df)
+        # Get unique time slots for this date
+        date_times = sorted(date_df['Time'].unique())
 
-        # Create expander for each date (like collapsible sections in the screenshot)
-        with st.expander(f"**{selected_date}** ({game_count} games)", expanded=(idx < dates_to_expand)):
-            # Get all unique fields and time slots
-            all_fields = sorted(date_df['Field'].unique())
-            all_times = sorted(date_df['Time'].unique())
+        for time in date_times:
+            row_data = {
+                'Date': selected_date,
+                'Time': time
+            }
 
-            # Create pivot table: Time (rows) x Field (columns), counting games
-            pivot_data = []
-
-            for time in all_times:
-                row_data = {'Time': time}
-
-                for field in all_fields:
-                    # Count games at this time/field combination
-                    game_count_cell = len(date_df[(date_df['Time'] == time) & (date_df['Field'] == field)])
-                    row_data[field] = game_count_cell if game_count_cell > 0 else 0
-
-                pivot_data.append(row_data)
-
-            # Convert to DataFrame
-            pivot_df = pd.DataFrame(pivot_data)
-
-            # Add Grand Total column (sum of games per time slot)
-            numeric_cols = [col for col in pivot_df.columns if col != 'Time']
-            pivot_df['Grand Total'] = pivot_df[numeric_cols].sum(axis=1)
-
-            # Add Grand Total row (sum of games per field)
-            totals_row = {'Time': 'Grand Total'}
+            # Count games for each field at this date/time
             for field in all_fields:
-                totals_row[field] = len(date_df[date_df['Field'] == field])
-            totals_row['Grand Total'] = len(date_df)
+                game_count = len(date_df[(date_df['Time'] == time) & (date_df['Field'] == field)])
+                row_data[field] = game_count if game_count > 0 else 0
 
-            # Append totals row
-            pivot_df = pd.concat([pivot_df, pd.DataFrame([totals_row])], ignore_index=True)
+                # Store game details for tooltips
+                if game_count > 0:
+                    key = (selected_date, time, field)
+                    if key not in game_details_master:
+                        game_details_master[key] = []
+                    for _, game_row in date_df[(date_df['Time'] == time) & (date_df['Field'] == field)].iterrows():
+                        game_info = f"{game_row['Division']} - {game_row['Home']} vs {game_row['Away']}"
+                        game_details_master[key].append(game_info)
 
-            # Replace 0 with empty string for display (except Grand Total column and row)
-            for col in all_fields:
-                pivot_df.loc[pivot_df.index[:-1], col] = pivot_df.loc[pivot_df.index[:-1], col].replace(0, '')
+            # Calculate row total
+            row_data['Grand Total'] = sum(row_data[field] for field in all_fields)
 
-            # Create game details dictionary for tooltips
-            game_details = {}
-            for _, game_row in date_df.iterrows():
-                key = (game_row['Time'], game_row['Field'])
-                if key not in game_details:
-                    game_details[key] = []
-                game_info = f"{game_row['Division']} - {game_row['Home']} vs {game_row['Away']}"
-                game_details[key].append(game_info)
+            master_data.append(row_data)
 
-            # Generate HTML table with styling and tooltips
-            html = """
-            <style>
-                .field-pivot-table {
-                    border-collapse: collapse;
-                    width: 100%;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                    font-size: 14px;
-                }
-                .field-pivot-table th, .field-pivot-table td {
-                    border: 1px solid #ddd;
-                    padding: 8px 12px;
-                    text-align: center;
-                }
-                .field-pivot-table th {
-                    background-color: #f0f2f6;
-                    font-weight: 600;
-                }
-                .field-pivot-table tr:hover {
-                    background-color: #f8f9fa;
-                }
-                .total-row {
-                    background-color: #fff3cd;
-                    font-weight: 600;
-                }
-                .total-column {
-                    background-color: #d1ecf1;
-                    font-weight: 600;
-                }
-                .total-cell {
-                    background-color: #ffc107;
-                    font-weight: 700;
-                }
-                .tooltip-cell {
-                    position: relative;
-                    cursor: help;
-                }
-                .tooltip-cell:hover {
-                    background-color: #e8f4f8;
-                }
-                .tooltip-cell .tooltiptext {
-                    visibility: hidden;
-                    width: 300px;
-                    background-color: #333;
-                    color: #fff;
-                    text-align: left;
-                    border-radius: 6px;
-                    padding: 12px;
-                    position: absolute;
-                    z-index: 1000;
-                    bottom: 125%;
-                    left: 50%;
-                    margin-left: -150px;
-                    opacity: 0;
-                    transition: opacity 0.3s;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-                    font-size: 13px;
-                    line-height: 1.6;
-                }
-                .tooltip-cell .tooltiptext::after {
-                    content: "";
-                    position: absolute;
-                    top: 100%;
-                    left: 50%;
-                    margin-left: -5px;
-                    border-width: 5px;
-                    border-style: solid;
-                    border-color: #333 transparent transparent transparent;
-                }
-                .tooltip-cell:hover .tooltiptext {
-                    visibility: visible;
-                    opacity: 1;
-                }
-                .game-item {
-                    padding: 4px 0;
-                    border-bottom: 1px solid #555;
-                }
-                .game-item:last-child {
-                    border-bottom: none;
-                }
-            </style>
-            <table class="field-pivot-table">
-                <thead>
-                    <tr>
-                        <th>Time</th>
-            """
+    # Calculate Grand Total row (totals by field across entire season)
+    totals_row = {'Date': 'Grand Total', 'Time': ''}
+    for field in all_fields:
+        totals_row[field] = df[df['Field'] == field].shape[0]
+    totals_row['Grand Total'] = len(df)
 
-            # Add column headers
+    master_data.append(totals_row)
+
+    # Generate HTML table with styling and tooltips
+    html = """
+    <style>
+        .master-view-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 13px;
+        }
+        .master-view-table th, .master-view-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        .master-view-table th {
+            background-color: #f0f2f6;
+            font-weight: 600;
+        }
+        .master-view-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .date-cell {
+            background-color: #e9ecef;
+            font-weight: 600;
+            text-align: left;
+            vertical-align: top;
+        }
+        .total-row {
+            background-color: #fff3cd;
+            font-weight: 600;
+        }
+        .total-column {
+            background-color: #d1ecf1;
+            font-weight: 600;
+        }
+        .total-cell {
+            background-color: #ffc107;
+            font-weight: 700;
+        }
+        .tooltip-cell {
+            position: relative;
+            cursor: help;
+        }
+        .tooltip-cell:hover {
+            background-color: #e8f4f8;
+        }
+        .tooltip-cell .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 12px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .tooltip-cell .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        .tooltip-cell:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        .game-item {
+            padding: 4px 0;
+            border-bottom: 1px solid #555;
+        }
+        .game-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+    <table class="master-view-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+    """
+
+    # Add field column headers
+    for field in all_fields:
+        html += f"<th>{field}</th>"
+    html += "<th>Grand Total</th></tr></thead><tbody>"
+
+    # Track date changes for rowspan
+    current_date = None
+    date_row_count = {}
+
+    # First pass: count rows per date
+    for row_data in master_data[:-1]:  # Exclude Grand Total row
+        date = row_data['Date']
+        if date not in date_row_count:
+            date_row_count[date] = 0
+        date_row_count[date] += 1
+
+    # Second pass: generate table rows
+    for idx, row_data in enumerate(master_data):
+        date = row_data['Date']
+        time = row_data['Time']
+        is_total_row = date == 'Grand Total'
+
+        html += "<tr>"
+
+        # Date column (with rowspan)
+        if date != current_date:
+            if is_total_row:
+                html += f'<th class="total-row" colspan="2">Grand Total</th>'
+            else:
+                rowspan = date_row_count.get(date, 1)
+                html += f'<th class="date-cell" rowspan="{rowspan}">{date}</th>'
+                html += f'<th>{time}</th>'
+            current_date = date
+        else:
+            if not is_total_row:
+                html += f'<th>{time}</th>'
+
+        # Field columns
+        if not is_total_row:
             for field in all_fields:
-                html += f"<th>{field}</th>"
-            html += "<th>Grand Total</th></tr></thead><tbody>"
+                value = row_data[field] if row_data[field] != 0 else ''
 
-            # Add data rows
-            for idx_row, row in pivot_df.iterrows():
-                is_total_row = row['Time'] == 'Grand Total'
-                html += "<tr>"
-
-                # Time column
-                cell_class = 'total-row' if is_total_row else ''
-                html += f'<th class="{cell_class}">{row["Time"]}</th>'
-
-                # Field columns
-                for field in all_fields:
-                    if is_total_row:
-                        cell_class = 'total-row'
-                        value = row[field] if row[field] != '' else ''
-                        html += f'<td class="{cell_class}">{value}</td>'
-                    else:
-                        value = row[field] if row[field] != '' else ''
-
-                        # Check if there are games for this time/field
-                        key = (row['Time'], field)
-                        if key in game_details and value != '':
-                            # Create tooltip with game details
-                            tooltip_content = "<br>".join([f'<div class="game-item">{game}</div>' for game in game_details[key]])
-                            html += f'''<td class="tooltip-cell">
-                                {value}
-                                <span class="tooltiptext">{tooltip_content}</span>
-                            </td>'''
-                        else:
-                            html += f'<td>{value}</td>'
-
-                # Grand Total column
-                if is_total_row:
-                    cell_class = 'total-cell'
+                # Check if there are games for this date/time/field
+                key = (date, time, field)
+                if key in game_details_master and value != '':
+                    # Create tooltip with game details
+                    tooltip_content = "<br>".join([f'<div class="game-item">{game}</div>' for game in game_details_master[key]])
+                    html += f'''<td class="tooltip-cell">
+                        {value}
+                        <span class="tooltiptext">{tooltip_content}</span>
+                    </td>'''
                 else:
-                    cell_class = 'total-column'
-                html += f'<td class="{cell_class}">{row["Grand Total"]}</td>'
-                html += "</tr>"
+                    html += f'<td>{value}</td>'
 
-            html += "</tbody></table>"
+            # Grand Total column
+            html += f'<td class="total-column">{row_data["Grand Total"]}</td>'
+        else:
+            # Grand Total row
+            for field in all_fields:
+                value = row_data[field]
+                html += f'<td class="total-row">{value}</td>'
+            html += f'<td class="total-cell">{row_data["Grand Total"]}</td>'
 
-            st.markdown(html, unsafe_allow_html=True)
+        html += "</tr>"
+
+    html += "</tbody></table>"
+
+    st.markdown(html, unsafe_allow_html=True)
 
 elif page == "👥 Team Schedules":
     st.title("👥 Team Schedules")
