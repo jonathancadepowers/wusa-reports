@@ -880,6 +880,9 @@ elif page == "🏟️ Master Field View":
     # Add toggle to hide past days
     hide_past = st.checkbox("Hide Days in the Past", value=False)
 
+    # Add toggle to highlight multi-division fields
+    highlight_multi_division = st.checkbox("Highlight when two different divisions play on the same field on the same day", value=False)
+
     # Get unique dates from the schedule in chronological order
     date_df_sorted = df[['Game Date', 'Game Date Parsed']].drop_duplicates().sort_values('Game Date Parsed')
 
@@ -907,6 +910,19 @@ elif page == "🏟️ Master Field View":
     if 'Pershing' not in all_fields:
         all_fields.append('Pershing')
     all_fields = sorted(all_fields)  # Re-sort to maintain alphabetical order
+
+    # Calculate which date/field combos have multiple divisions playing (for highlighting)
+    multi_division_fields = set()
+    if highlight_multi_division:
+        for selected_date in unique_dates:
+            date_df = df[df['Game Date'] == selected_date].copy()
+            for field in all_fields:
+                # Skip empty fields (McGovern, Pershing if no games)
+                field_games = date_df[date_df['Field'] == field]
+                if len(field_games) > 0:
+                    unique_divisions = field_games['Division'].unique()
+                    if len(unique_divisions) > 1:
+                        multi_division_fields.add((selected_date, field))
 
     # Build master data structure: list of (date, time, field_counts) for each date/time combination
     master_data = []
@@ -995,6 +1011,9 @@ elif page == "🏟️ Master Field View":
         .total-cell {
             background-color: #ffc107;
             font-weight: 700;
+        }
+        .multi-division-highlight {
+            background-color: #ffebcc !important;
         }
         .tooltip-cell {
             position: relative;
@@ -1093,17 +1112,24 @@ elif page == "🏟️ Master Field View":
             for field in all_fields:
                 value = row_data[field] if row_data[field] != 0 else ''
 
+                # Check if this date/field combo should be highlighted
+                should_highlight = (row_data['Date_Full'], field) in multi_division_fields
+
                 # Check if there are games for this date/time/field (use full date for lookup)
                 key = (row_data['Date_Full'], time, field)
                 if key in game_details_master and value != '':
                     # Create tooltip with game details
                     tooltip_content = "<br>".join([f'<div class="game-item">{game}</div>' for game in game_details_master[key]])
-                    html += f'''<td class="tooltip-cell">
+                    cell_class = "tooltip-cell"
+                    if should_highlight:
+                        cell_class += " multi-division-highlight"
+                    html += f'''<td class="{cell_class}">
                         {value}
                         <span class="tooltiptext">{tooltip_content}</span>
                     </td>'''
                 else:
-                    html += f'<td>{value}</td>'
+                    cell_class = "multi-division-highlight" if should_highlight else ""
+                    html += f'<td class="{cell_class}">{value}</td>'
 
             # Grand Total column
             html += f'<td class="total-column">{row_data["Grand Total"]}</td>'
