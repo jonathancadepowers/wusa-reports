@@ -944,22 +944,29 @@ elif page == "🏟️ Master Field View":
                 'Time': time
             }
 
-            # Count games for each field at this date/time
+            # Get division names for each field at this date/time
             for field in all_fields:
-                game_count = len(date_df[(date_df['Time'] == time) & (date_df['Field'] == field)])
-                row_data[field] = game_count if game_count > 0 else 0
+                field_games = date_df[(date_df['Time'] == time) & (date_df['Field'] == field)]
+                game_count = len(field_games)
+
+                if game_count > 0:
+                    # Get unique divisions for this time/field
+                    divisions = field_games['Division'].unique()
+                    row_data[field] = ', '.join(sorted(divisions))
+                else:
+                    row_data[field] = ''
 
                 # Store game details for tooltips
                 if game_count > 0:
                     key = (selected_date, time, field)
                     if key not in game_details_master:
                         game_details_master[key] = []
-                    for _, game_row in date_df[(date_df['Time'] == time) & (date_df['Field'] == field)].iterrows():
+                    for _, game_row in field_games.iterrows():
                         game_info = f"{game_row['Division']} - {game_row['Home']} vs {game_row['Away']}"
                         game_details_master[key].append(game_info)
 
-            # Calculate row total
-            row_data['Grand Total'] = sum(row_data[field] for field in all_fields)
+            # Calculate row total (count of games across all fields)
+            row_data['Grand Total'] = sum(1 for field in all_fields if row_data[field] != '')
 
             master_data.append(row_data)
 
@@ -1113,7 +1120,7 @@ elif page == "🏟️ Master Field View":
         # Field columns
         if not is_total_row:
             for field in all_fields:
-                value = row_data[field] if row_data[field] != 0 else ''
+                value = row_data[field]  # Already a division name or empty string
 
                 # Check if this date/field combo should be highlighted
                 should_highlight = (row_data['Date_Full'], field) in multi_division_fields
