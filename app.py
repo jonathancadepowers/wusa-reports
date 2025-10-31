@@ -978,14 +978,17 @@ elif page == "🏟️ Master Field View":
             border-collapse: collapse;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 11px;
-            table-layout: auto;
-            width: auto;
+            table-layout: fixed;
+            width: 100%;
         }
         .master-view-table th, .master-view-table td {
             border: 1px solid #ddd;
             padding: 4px 6px;
             text-align: center;
             white-space: nowrap;
+        }
+        .field-column {
+            width: 7%;
         }
         .master-view-table th {
             background-color: #f0f2f6;
@@ -1072,7 +1075,7 @@ elif page == "🏟️ Master Field View":
 
     # Add field column headers
     for field in all_fields:
-        html += f"<th>{field}</th>"
+        html += f'<th class="field-column">{field}</th>'
     html += "<th>Grand Total</th></tr></thead><tbody>"
 
     # Track date changes for rowspan
@@ -1120,7 +1123,7 @@ elif page == "🏟️ Master Field View":
                 if key in game_details_master and value != '':
                     # Create tooltip with game details
                     tooltip_content = "<br>".join([f'<div class="game-item">{game}</div>' for game in game_details_master[key]])
-                    cell_class = "tooltip-cell"
+                    cell_class = "field-column tooltip-cell"
                     if should_highlight:
                         cell_class += " multi-division-highlight"
                     html += f'''<td class="{cell_class}">
@@ -1128,7 +1131,9 @@ elif page == "🏟️ Master Field View":
                         <span class="tooltiptext">{tooltip_content}</span>
                     </td>'''
                 else:
-                    cell_class = "multi-division-highlight" if should_highlight else ""
+                    cell_class = "field-column"
+                    if should_highlight:
+                        cell_class += " multi-division-highlight"
                     html += f'<td class="{cell_class}">{value}</td>'
 
             # Grand Total column
@@ -1137,7 +1142,7 @@ elif page == "🏟️ Master Field View":
             # Grand Total row
             for field in all_fields:
                 value = row_data[field]
-                html += f'<td class="total-row">{value}</td>'
+                html += f'<td class="field-column total-row">{value}</td>'
             html += f'<td class="total-cell">{row_data["Grand Total"]}</td>'
 
         html += "</tr>"
