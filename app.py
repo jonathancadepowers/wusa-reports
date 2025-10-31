@@ -882,6 +882,15 @@ elif page == "🏟️ Games by Field (Master View)":
     date_df_sorted = df[['Game Date', 'Game Date Parsed']].drop_duplicates().sort_values('Game Date Parsed')
     unique_dates = date_df_sorted['Game Date'].tolist()
 
+    # Create a mapping of full dates to short formatted dates
+    date_format_map = {}
+    for _, row in date_df_sorted.iterrows():
+        full_date = row['Game Date']
+        parsed_date = row['Game Date Parsed']
+        # Format as "Sun-Sep 14" (day without leading zero)
+        short_date = parsed_date.strftime('%a-%b %d').replace(' 0', ' ')
+        date_format_map[full_date] = short_date
+
     # Get all unique fields across the entire season
     all_fields = sorted(df['Field'].unique())
 
@@ -900,7 +909,8 @@ elif page == "🏟️ Games by Field (Master View)":
 
         for time in date_times:
             row_data = {
-                'Date': selected_date,
+                'Date': date_format_map[selected_date],  # Use short formatted date
+                'Date_Full': selected_date,  # Keep full date for lookups
                 'Time': time
             }
 
@@ -957,6 +967,8 @@ elif page == "🏟️ Games by Field (Master View)":
             font-weight: 600;
             text-align: left;
             vertical-align: top;
+            width: 85px;
+            white-space: nowrap;
         }
         .total-row {
             background-color: #fff3cd;
@@ -1067,8 +1079,8 @@ elif page == "🏟️ Games by Field (Master View)":
             for field in all_fields:
                 value = row_data[field] if row_data[field] != 0 else ''
 
-                # Check if there are games for this date/time/field
-                key = (date, time, field)
+                # Check if there are games for this date/time/field (use full date for lookup)
+                key = (row_data['Date_Full'], time, field)
                 if key in game_details_master and value != '':
                     # Create tooltip with game details
                     tooltip_content = "<br>".join([f'<div class="game-item">{game}</div>' for game in game_details_master[key]])
