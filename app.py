@@ -375,7 +375,7 @@ page = st.sidebar.radio(
     [
         "📅 Full Schedule",
         "🏟️ Games by Field",
-        "🏟️ Games by Field (Master View)",
+        "🏟️ Master Field View",
         "👥 Team Schedules",
         "📋 Team vs Date Matrix",
         "📊 Division Summary",
@@ -874,8 +874,8 @@ elif page == "🏟️ Games by Field":
             "text/csv"
         )
 
-elif page == "🏟️ Games by Field (Master View)":
-    st.title("🏟️ Games by Field (Master View)")
+elif page == "🏟️ Master Field View":
+    st.title("🏟️ Master Field View")
 
     # Add toggle to hide past days
     hide_past = st.checkbox("Hide Days in the Past", value=False)
@@ -901,6 +901,12 @@ elif page == "🏟️ Games by Field (Master View)":
 
     # Get all unique fields across the entire season
     all_fields = sorted(df['Field'].unique())
+    # Add McGovern and Pershing even if they have no games
+    if 'McGovern' not in all_fields:
+        all_fields.append('McGovern')
+    if 'Pershing' not in all_fields:
+        all_fields.append('Pershing')
+    all_fields = sorted(all_fields)  # Re-sort to maintain alphabetical order
 
     # Build master data structure: list of (date, time, field_counts) for each date/time combination
     master_data = []
