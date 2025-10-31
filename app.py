@@ -954,14 +954,16 @@ elif page == "🏟️ Games by Field (Master View)":
     <style>
         .master-view-table {
             border-collapse: collapse;
-            width: 100%;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 11px;
+            table-layout: auto;
+            width: auto;
         }
         .master-view-table th, .master-view-table td {
             border: 1px solid #ddd;
             padding: 4px 6px;
             text-align: center;
+            white-space: nowrap;
         }
         .master-view-table th {
             background-color: #f0f2f6;
@@ -975,8 +977,6 @@ elif page == "🏟️ Games by Field (Master View)":
             font-weight: 600;
             text-align: left;
             vertical-align: top;
-            width: 85px;
-            white-space: nowrap;
         }
         .total-row {
             background-color: #fff3cd;
