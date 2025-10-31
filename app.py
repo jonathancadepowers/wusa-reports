@@ -938,11 +938,11 @@ elif page == "🏟️ Games by Field (Master View)":
             border-collapse: collapse;
             width: 100%;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 13px;
+            font-size: 11px;
         }
         .master-view-table th, .master-view-table td {
             border: 1px solid #ddd;
-            padding: 8px 12px;
+            padding: 4px 6px;
             text-align: center;
         }
         .master-view-table th {
