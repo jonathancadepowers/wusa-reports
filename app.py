@@ -876,10 +876,18 @@ elif page == "🏟️ Games by Field":
 
 elif page == "🏟️ Games by Field (Master View)":
     st.title("🏟️ Games by Field (Master View)")
-    st.markdown("One comprehensive view of all games for the entire season.")
+
+    # Add toggle to hide past days
+    hide_past = st.checkbox("Hide Days in the Past", value=False)
 
     # Get unique dates from the schedule in chronological order
     date_df_sorted = df[['Game Date', 'Game Date Parsed']].drop_duplicates().sort_values('Game Date Parsed')
+
+    # Filter out past dates if toggle is on
+    if hide_past:
+        today = pd.Timestamp.now().normalize()
+        date_df_sorted = date_df_sorted[date_df_sorted['Game Date Parsed'] >= today]
+
     unique_dates = date_df_sorted['Game Date'].tolist()
 
     # Create a mapping of full dates to short formatted dates
